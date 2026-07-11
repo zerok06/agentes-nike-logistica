@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.core.middleware import AuthenticationMiddleware
 
 app = FastAPI(
     title="Nike Logística Backend",
@@ -17,6 +18,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(AuthenticationMiddleware)
 
 app.include_router(
     api_router,
