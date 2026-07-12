@@ -21,6 +21,12 @@ class Settings(BaseSettings):
         "http://localhost:5173",
     ]
 
+    # Database
+    database_url_central: str
+    database_url_sede: str
+    database_url_retail: str
+    database_url_supply: str
+
     # Keycloak
     keycloak_url: str = "http://localhost:8080"
     keycloak_realm: str = "nike-logistica"
