@@ -1,10 +1,13 @@
 from enum import StrEnum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from datetime import datetime
+
 
 class UserRole(StrEnum):
     ADMIN = "admin"
     SUPERVISOR = "supervisor"
     OPERATOR = "operador"
+
 
 class AuthenticatedUser(BaseModel):
     subject: str
@@ -14,3 +17,41 @@ class AuthenticatedUser(BaseModel):
     is_demo: bool = False
 
 
+class UserCreate(BaseModel):
+    email: EmailStr
+    username: str = Field(..., min_length=3, max_length=100)
+    password: str = Field(..., min_length=6, max_length=128)
+    role: UserRole = UserRole.OPERATOR
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: int
+    email: str
+    username: str
+    role: str
+    is_active: bool
+    created_at: datetime | None = None
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+class TokenData(BaseModel):
+    user_id: int | None = None
+    email: str | None = None
+    role: str | None = None

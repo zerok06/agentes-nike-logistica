@@ -1,4 +1,3 @@
-import uuid
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +16,7 @@ router = APIRouter(
 
 # Pydantic Schemas
 class InventoryItemResponse(BaseModel):
-    inventory_id: uuid.UUID
+    inventory_id: int
     sku: str
     product_name: str
     warehouse_name: str
@@ -30,9 +29,9 @@ class InventoryItemResponse(BaseModel):
         from_attributes = True
 
 class TransferRequest(BaseModel):
-    product_id: uuid.UUID
-    from_warehouse_id: uuid.UUID
-    to_warehouse_id: uuid.UUID
+    product_id: int
+    from_warehouse_id: int
+    to_warehouse_id: int
     quantity: int = Field(..., gt=0, description="Cantidad a transferir (debe ser mayor a 0)")
 
 class AuditLogResponse(BaseModel):
@@ -109,16 +108,21 @@ async def transfer_stock(
     
     # 4. Registrar en Auditoría (Detalles en JSONB como requiere el SDD/Prompt)
     audit_details = {
-        "product_id": str(payload.product_id),
-        "from_warehouse_id": str(payload.from_warehouse_id),
-        "to_warehouse_id": str(payload.to_warehouse_id),
+        "product_id": payload.product_id,
+        "from_warehouse_id": payload.from_warehouse_id,
+        "to_warehouse_id": payload.to_warehouse_id,
         "quantity": payload.quantity,
         "user_email": current_user.email
     }
     
+    user_id_val = None
+    subject_cleaned = current_user.subject.replace("demo-", "")
+    if current_user.is_demo and subject_cleaned.isdigit():
+        user_id_val = int(subject_cleaned)
+        
     await audit_repo.create_log(
         action="TRASLADO_CONFIRMADO",
-        user_id=uuid.UUID(current_user.subject.replace("demo-", "")) if current_user.is_demo and len(current_user.subject) > 10 else None,
+        user_id=user_id_val,
         entity_name="inventory",
         entity_id=str(payload.product_id),
         details=audit_details

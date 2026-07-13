@@ -35,7 +35,7 @@ CREATE TABLE supplier_groups (
 );
 
 CREATE TABLE factories (
-    factory_id       UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    factory_id SERIAL PRIMARY KEY,
     group_id         INT          REFERENCES supplier_groups(group_id),
     factory_name     VARCHAR(200) NOT NULL,
     factory_type     VARCHAR(50)  CHECK (factory_type IN ('FINISHED GOODS','MATERIAL','COMPONENT')),

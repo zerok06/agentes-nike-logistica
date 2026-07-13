@@ -1,10 +1,9 @@
-import uuid
 from typing import Sequence
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.inventory import Inventory, Product, Warehouse, ProductEmbedding
+from app.models.inventory import Inventory, Product, ProductEmbedding
 
 class InventoryRepository:
     def __init__(self, session: AsyncSession):
@@ -24,7 +23,7 @@ class InventoryRepository:
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
-    async def get_inventory_by_warehouse(self, warehouse_id: uuid.UUID) -> Sequence[Inventory]:
+    async def get_inventory_by_warehouse(self, warehouse_id: int) -> Sequence[Inventory]:
         """Obtiene el inventario de un almacén específico."""
         stmt = (
             select(Inventory)
@@ -34,7 +33,7 @@ class InventoryRepository:
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
-    async def get_stock(self, product_id: uuid.UUID, warehouse_id: uuid.UUID) -> Inventory | None:
+    async def get_stock(self, product_id: int, warehouse_id: int) -> Inventory | None:
         """Obtiene el registro de inventario para un producto y almacén específico."""
         stmt = (
             select(Inventory)
@@ -48,7 +47,6 @@ class InventoryRepository:
 
     async def search_similar_products(self, query_vector: list[float], limit: int = 5) -> Sequence[ProductEmbedding]:
         """Busca productos similares semánticamente utilizando pgvector."""
-        # cosine_distance se ordena de menor a mayor (menor distancia = mayor similitud)
         stmt = (
             select(ProductEmbedding)
             .options(selectinload(ProductEmbedding.product))
@@ -58,7 +56,7 @@ class InventoryRepository:
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
-    async def update_stock(self, product_id: uuid.UUID, warehouse_id: uuid.UUID, quantity: int) -> Inventory:
+    async def update_stock(self, product_id: int, warehouse_id: int, quantity: int) -> Inventory:
         """Actualiza el stock directo o crea el registro si no existe."""
         db_inventory = await self.get_stock(product_id, warehouse_id)
         if db_inventory:

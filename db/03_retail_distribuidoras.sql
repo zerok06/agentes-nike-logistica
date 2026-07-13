@@ -48,7 +48,7 @@ CREATE TABLE product_categories (
 );
 
 CREATE TABLE retail_sales (
-    sale_id       UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+    sale_id SERIAL PRIMARY KEY,
     invoice_date  DATE          NOT NULL,
     retailer_id   INT           REFERENCES retailers(retailer_id),
     region_id     INT           REFERENCES regions(region_id),

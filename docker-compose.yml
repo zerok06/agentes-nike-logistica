@@ -181,23 +181,34 @@ services:
     container_name: nike_backend
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${APP_PORT:-8000}:8000"
     environment:
-      - APP_ENV=development
+      - APP_ENV=${APP_ENV:-development}
       - APP_PORT=8000
       - APP_HOST=0.0.0.0
       - SECRET_KEY=${SECRET_KEY}
-      - DEMO_MODE=${DEMO_MODE}
-      - DEMO_ROLE_HEADER=${DEMO_ROLE_HEADER}
+      - DEMO_MODE=${DEMO_MODE:-True}
+      - DEMO_ROLE_HEADER=${DEMO_ROLE_HEADER:-X-Demo-Role}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173}
       - DATABASE_URL_CENTRAL=postgresql+asyncpg://${DB_CENTRAL_USER}:${DB_CENTRAL_PASSWORD}@postgres_central:5432/${DB_CENTRAL_NAME}
       - DATABASE_URL_SEDE=postgresql+asyncpg://${DB_SEDE_USER}:${DB_SEDE_PASSWORD}@postgres_sede_peru:5432/${DB_SEDE_NAME}
       - DATABASE_URL_RETAIL=postgresql+asyncpg://${DB_RETAIL_USER}:${DB_RETAIL_PASSWORD}@postgres_retail:5432/${DB_RETAIL_NAME}
       - DATABASE_URL_SUPPLY=postgresql+asyncpg://${DB_SUPPLY_USER}:${DB_SUPPLY_PASSWORD}@postgres_supply_chain:5432/${DB_SUPPLY_NAME}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
       - HUAWEI_API_KEY=${HUAWEI_API_KEY}
       - HUAWEI_BASE_URL=${HUAWEI_BASE_URL}
       - HUAWEI_MODEL=${HUAWEI_MODEL}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_MODEL=${GROQ_MODEL}
+      - GROQ_MAX_TOKENS=${GROQ_MAX_TOKENS:-2048}
+      - GROQ_TEMPERATURE=${GROQ_TEMPERATURE:-0.3}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
+      - EMBEDDING_DIMENSIONS=${EMBEDDING_DIMENSIONS:-384}
+      - VECTOR_SIMILARITY_THRESHOLD=${VECTOR_SIMILARITY_THRESHOLD:-0.95}
+    volumes:
+      - ./backend/app:/workspace/app
     depends_on:
       postgres_central:
         condition: service_healthy
@@ -216,6 +227,13 @@ services:
     restart: unless-stopped
     ports:
       - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000/api/v1
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
     depends_on:
       - backend
     networks:

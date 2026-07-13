@@ -1,4 +1,3 @@
-import uuid
 from typing import Any, Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,8 +10,8 @@ class AuditRepository:
     async def create_log(
         self,
         action: str,
-        user_id: uuid.UUID | None = None,
-        organization_id: uuid.UUID | None = None,
+        user_id: int | None = None,
+        organization_id: int | None = None,
         entity_name: str | None = None,
         entity_id: str | None = None,
         details: dict[str, Any] | None = None

@@ -1,0 +1,179 @@
+import React, { useState } from 'react'
+import { User, Lock, Bell, Palette } from 'lucide-react'
+import { Card } from '../../components/ui/Card'
+import { Button } from '../../components/ui/Button'
+import { Badge } from '../../components/ui/Badge'
+import { useAuthStore } from '../../store/useAuthStore'
+
+export const SettingsPage: React.FC = () => {
+  const { user } = useAuthStore()
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [notifications, setNotifications] = useState({
+    stockCritical: true,
+    transfers: true,
+    audit: false,
+    chatbot: true,
+  })
+
+  const roleLabel =
+    user?.role === 'admin'
+      ? 'Administrador'
+      : user?.role === 'supervisor'
+        ? 'Supervisor'
+        : 'Operador'
+
+  return (
+    <div className="space-y-6">
+      {/* Profile */}
+      <Card
+        title="Perfil de Usuario"
+        icon={<User className="w-5 h-5 text-nikeOrange" />}
+      >
+        <div className="flex items-center gap-6 mb-6">
+          <div className="w-20 h-20 rounded-full bg-nikeOrange/20 border border-nikeOrange/30 flex items-center justify-center text-nikeOrange font-bold text-2xl">
+            {user?.username?.charAt(0).toUpperCase() || 'U'}
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-white/90">{user?.username}</h3>
+            <p className="text-sm text-white/50">{user?.email}</p>
+            <div className="mt-2">
+              <Badge variant="info">{roleLabel}</Badge>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
+              Username
+            </label>
+            <input
+              type="text"
+              value={user?.username || ''}
+              disabled
+              className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white/50 outline-none"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
+              Email
+            </label>
+            <input
+              type="email"
+              value={user?.email || ''}
+              disabled
+              className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white/50 outline-none"
+            />
+          </div>
+        </div>
+      </Card>
+
+      {/* Change password */}
+      <Card
+        title="Cambiar Contraseña"
+        icon={<Lock className="w-5 h-5 text-nikeOrange" />}
+      >
+        <div className="space-y-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
+              Contraseña Actual
+            </label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-nikeOrange outline-none"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
+                Nueva Contraseña
+              </label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-nikeOrange outline-none"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
+                Confirmar Contraseña
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-nikeOrange outline-none"
+              />
+            </div>
+          </div>
+          <Button>Actualizar Contraseña</Button>
+        </div>
+      </Card>
+
+      {/* Notifications */}
+      <Card
+        title="Preferencias de Notificaciones"
+        icon={<Bell className="w-5 h-5 text-nikeOrange" />}
+      >
+        <div className="space-y-4">
+          {[
+            { key: 'stockCritical', label: 'Alertas de Stock Crítico', desc: 'Notificar cuando el stock baja del mínimo' },
+            { key: 'transfers', label: 'Traslados de Stock', desc: 'Notificar traslados confirmados' },
+            { key: 'audit', label: 'Registros de Auditoría', desc: 'Notificar nuevos registros de auditoría' },
+            { key: 'chatbot', label: 'Respuestas del Chatbot', desc: 'Notificar respuestas del asistente IA' },
+          ].map((item) => (
+            <div
+              key={item.key}
+              className="flex items-center justify-between p-3 rounded-xl bg-white/5"
+            >
+              <div>
+                <p className="text-sm font-semibold text-white/90">{item.label}</p>
+                <p className="text-xs text-white/40">{item.desc}</p>
+              </div>
+              <button
+                onClick={() =>
+                  setNotifications((prev) => ({
+                    ...prev,
+                    [item.key]: !prev[item.key as keyof typeof notifications],
+                  }))
+                }
+                className={`w-12 h-6 rounded-full transition-colors relative ${
+                  notifications[item.key as keyof typeof notifications]
+                    ? 'bg-nikeOrange'
+                    : 'bg-white/10'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                    notifications[item.key as keyof typeof notifications]
+                      ? 'translate-x-6'
+                      : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Theme */}
+      <Card
+        title="Apariencia"
+        icon={<Palette className="w-5 h-5 text-nikeOrange" />}
+      >
+        <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
+          <div>
+            <p className="text-sm font-semibold text-white/90">Tema Oscuro</p>
+            <p className="text-xs text-white/40">Tema Nike Premium activo</p>
+          </div>
+          <Badge variant="success">Activo</Badge>
+        </div>
+      </Card>
+    </div>
+  )
+}

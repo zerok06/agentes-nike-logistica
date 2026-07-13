@@ -6,7 +6,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 
 from app.core.config import settings
-from app.core.security import create_demo_user
+from app.core.security import create_demo_user, decode_token, normalize_role
+from app.schemas.auth import AuthenticatedUser, UserRole
 
 
 PUBLIC_PATHS = {
@@ -15,7 +16,33 @@ PUBLIC_PATHS = {
     "/redoc",
     "/openapi.json",
     "/api/v1/health/",
+    "/api/v1/auth/login",
+    "/api/v1/auth/register",
+    "/api/v1/auth/refresh",
 }
+
+
+def _user_from_jwt(payload: dict) -> AuthenticatedUser | None:
+    user_id = payload.get("sub")
+    email = payload.get("email")
+    role_str = payload.get("role")
+
+    if user_id is None or role_str is None:
+        return None
+
+    try:
+        role = normalize_role(role_str)
+    except ValueError:
+        return None
+
+    return AuthenticatedUser(
+        subject=user_id,
+        email=email,
+        username=email,
+        roles={role},
+        is_demo=False,
+    )
+
 
 class AuthenticationMiddleware(BaseHTTPMiddleware):
     async def dispatch(
@@ -27,17 +54,27 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         if request.url.path in PUBLIC_PATHS:
             return await call_next(request)
-        
-        if not settings.demo_mode:
-            return JSONResponse(
-                status_code=501,
-                content={
-                    "detail": (
-                        "La autenticación con Keycloak todavía no está implementada"
-                    )
-                },
-            )
-        
+
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.removeprefix("Bearer ").strip()
+            payload = decode_token(token)
+            if payload is None or payload.get("type") != "access":
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Token de acceso inválido o expirado"},
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            user = _user_from_jwt(payload)
+            if user is None:
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Token malformado"},
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            request.state.user = user
+            return await call_next(request)
+
         demo_role = request.headers.get(settings.demo_role_header)
 
         if demo_role is None:
@@ -45,7 +82,8 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 status_code=401,
                 content={
                     "detail": (
-                        f"Falta la cabecera {settings.demo_role_header}"
+                        "No autenticado. Proporciona un token JWT "
+                        "o la cabecera de demo."
                     )
                 },
                 headers={"WWW-Authenticate": "Bearer"},
