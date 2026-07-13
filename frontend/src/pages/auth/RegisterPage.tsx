@@ -6,8 +6,16 @@ import { motion } from 'framer-motion'
 import { useNavigate } from '@tanstack/react-router'
 import { Mail, Lock, User } from 'lucide-react'
 import { useAuthStore } from '../../store/useAuthStore'
-import { Button } from '../../components/ui/Button'
-import { Input } from '../../components/ui/Input'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
+import { Label } from '../../components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select'
 import type { UserRole } from '../../types/auth'
 
 const registerSchema = z
@@ -32,6 +40,7 @@ export const RegisterPage: React.FC = () => {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
@@ -118,17 +127,17 @@ export const RegisterPage: React.FC = () => {
           />
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
-              Rol
-            </label>
-            <select
-              className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-nikeOrange outline-none"
-              {...register('role')}
-            >
-              <option value="admin">Administrador</option>
-              <option value="supervisor">Supervisor</option>
-              <option value="operador">Operador</option>
-            </select>
+            <Label htmlFor="role">Rol</Label>
+            <Select defaultValue="operador" onValueChange={(val) => setValue('role', val as any)}>
+              <SelectTrigger id="role">
+                <SelectValue placeholder="Selecciona un rol" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Administrador</SelectItem>
+                <SelectItem value="supervisor">Supervisor</SelectItem>
+                <SelectItem value="operador">Operador</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <Button type="submit" loading={isLoading} className="w-full" size="lg">

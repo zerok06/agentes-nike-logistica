@@ -6,9 +6,10 @@ import {
   RefreshCw,
   Search,
 } from 'lucide-react'
-import { Card } from '../../components/ui/Card'
+import { Card } from '../../components/ui/card'
 import { Loader } from '../../components/ui/Loader'
-import { Badge } from '../../components/ui/Badge'
+import { Badge } from '../../components/ui/badge'
+import { Input } from '../../components/ui/input'
 import { useAuthStore } from '../../store/useAuthStore'
 import { inventoryService } from '../../services/inventory.service'
 import type { AuditLog } from '../../types/inventory'
@@ -75,14 +76,13 @@ export const AuditPage: React.FC = () => {
         </button>
       }
     >
-      <div className="mb-4 relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-        <input
+      <div className="mb-4">
+        <Input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar por acción o email..."
-          className="w-full bg-background border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:border-nikeOrange outline-none"
+          icon={<Search className="w-4 h-4" />}
         />
       </div>
 

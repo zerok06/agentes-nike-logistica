@@ -22,8 +22,17 @@ import {
   MapPin,
   Navigation,
 } from 'lucide-react'
-import { Card } from '../../components/ui/Card'
-import { Badge } from '../../components/ui/Badge'
+import { Card } from '../../components/ui/card'
+import { Badge } from '../../components/ui/badge'
+import { Button } from '../../components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '../../components/ui/dialog'
+import { Progress } from '../../components/ui/progress'
 
 import 'leaflet/dist/leaflet.css'
 
@@ -551,36 +560,26 @@ export const TrackingPage: React.FC = () => {
       </Card>
 
       {/* Vehicle detail modal */}
-      <AnimatePresence>
-        {selectedVehicle && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setSelectedVehicle(null)}
-            className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="glass-panel rounded-3xl p-6 max-w-md w-full shadow-2xl"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-white/5 text-nikeOrange">
-                    {vehicleIconMap[selectedVehicle.type]}
+      <Dialog open={!!selectedVehicle} onOpenChange={(open) => !open && setSelectedVehicle(null)}>
+        <DialogContent className="max-w-md">
+          {selectedVehicle && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-white/5 text-nikeOrange">
+                      {vehicleIconMap[selectedVehicle.type]}
+                    </div>
+                    <div>
+                      <DialogTitle>{selectedVehicle.id}</DialogTitle>
+                      <DialogDescription>{selectedVehicle.plate}</DialogDescription>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white/90">{selectedVehicle.id}</h3>
-                    <p className="text-xs text-white/40">{selectedVehicle.plate}</p>
-                  </div>
+                  <Badge variant={statusConfig[selectedVehicle.status].variant}>
+                    {statusConfig[selectedVehicle.status].label}
+                  </Badge>
                 </div>
-                <Badge variant={statusConfig[selectedVehicle.status].variant}>
-                  {statusConfig[selectedVehicle.status].label}
-                </Badge>
-              </div>
+              </DialogHeader>
 
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
@@ -617,28 +616,21 @@ export const TrackingPage: React.FC = () => {
                     <span>Progreso</span>
                     <span>{Math.round(selectedVehicle.progress)}%</span>
                   </div>
-                  <div className="h-3 rounded-full bg-white/5 overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${selectedVehicle.progress}%`,
-                        background: statusConfig[selectedVehicle.status].color,
-                      }}
-                    />
-                  </div>
+                  <Progress
+                    value={selectedVehicle.progress}
+                    indicatorClassName=""
+                    className="h-3"
+                  />
                 </div>
 
-                <button
-                  onClick={() => setSelectedVehicle(null)}
-                  className="w-full mt-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-sm font-semibold text-white/70 transition-colors"
-                >
+                <Button variant="secondary" className="w-full" onClick={() => setSelectedVehicle(null)}>
                   Cerrar
-                </button>
+                </Button>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

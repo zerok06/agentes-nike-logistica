@@ -1,15 +1,16 @@
-import React from 'react'
-import clsx from 'clsx'
-import { twMerge } from 'tailwind-merge'
+import * as React from "react"
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+import { cn } from "@/lib/utils"
+
+export interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string
   error?: string
   icon?: React.ReactNode
 }
 
-export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, icon, className, ...props }, ref) => {
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, label, error, icon, ...props }, ref) => {
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
@@ -24,15 +25,14 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             </div>
           )}
           <input
-            ref={ref}
-            className={twMerge(
-              clsx(
-                'w-full bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-nikeOrange outline-none transition-colors',
-                icon && 'pl-10',
-                error && 'border-red-500/50',
-              ),
+            type={type}
+            className={cn(
+              "w-full bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-primary outline-none transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+              icon && "pl-10",
+              error && "border-red-500/50",
               className,
             )}
+            ref={ref}
             {...props}
           />
         </div>
@@ -41,5 +41,6 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     )
   }
 )
+Input.displayName = "Input"
 
-Input.displayName = 'Input'
+export { Input }

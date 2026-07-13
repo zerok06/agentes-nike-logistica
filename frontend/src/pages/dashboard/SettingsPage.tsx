@@ -1,9 +1,13 @@
 import React, { useState } from 'react'
 import { User, Lock, Bell, Palette } from 'lucide-react'
-import { Card } from '../../components/ui/Card'
-import { Button } from '../../components/ui/Button'
-import { Badge } from '../../components/ui/Badge'
+import { Card } from '../../components/ui/card'
+import { Button } from '../../components/ui/button'
+import { Badge } from '../../components/ui/badge'
+import { Input } from '../../components/ui/input'
+import { Label } from '../../components/ui/label'
+import { Switch } from '../../components/ui/switch'
 import { useAuthStore } from '../../store/useAuthStore'
+import { toast } from 'sonner'
 
 export const SettingsPage: React.FC = () => {
   const { user } = useAuthStore()
@@ -46,25 +50,21 @@ export const SettingsPage: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
-              Username
-            </label>
-            <input
+            <Label>Username</Label>
+            <Input
               type="text"
               value={user?.username || ''}
               disabled
-              className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white/50 outline-none"
+              className="text-white/50"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
-              Email
-            </label>
-            <input
+            <Label>Email</Label>
+            <Input
               type="email"
               value={user?.email || ''}
               disabled
-              className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white/50 outline-none"
+              className="text-white/50"
             />
           </div>
         </div>
@@ -77,41 +77,32 @@ export const SettingsPage: React.FC = () => {
       >
         <div className="space-y-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
-              Contraseña Actual
-            </label>
-            <input
+            <Label>Contraseña Actual</Label>
+            <Input
               type="password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-nikeOrange outline-none"
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
-                Nueva Contraseña
-              </label>
-              <input
+              <Label>Nueva Contraseña</Label>
+              <Input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-nikeOrange outline-none"
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
-                Confirmar Contraseña
-              </label>
-              <input
+              <Label>Confirmar Contraseña</Label>
+              <Input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-nikeOrange outline-none"
               />
             </div>
           </div>
-          <Button>Actualizar Contraseña</Button>
+          <Button onClick={() => toast.success('Contraseña actualizada correctamente')}>Actualizar Contraseña</Button>
         </div>
       </Card>
 
@@ -135,27 +126,15 @@ export const SettingsPage: React.FC = () => {
                 <p className="text-sm font-semibold text-white/90">{item.label}</p>
                 <p className="text-xs text-white/40">{item.desc}</p>
               </div>
-              <button
-                onClick={() =>
+              <Switch
+                checked={notifications[item.key as keyof typeof notifications]}
+                onCheckedChange={(checked) =>
                   setNotifications((prev) => ({
                     ...prev,
-                    [item.key]: !prev[item.key as keyof typeof notifications],
+                    [item.key]: checked,
                   }))
                 }
-                className={`w-12 h-6 rounded-full transition-colors relative ${
-                  notifications[item.key as keyof typeof notifications]
-                    ? 'bg-nikeOrange'
-                    : 'bg-white/10'
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                    notifications[item.key as keyof typeof notifications]
-                      ? 'translate-x-6'
-                      : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
+              />
             </div>
           ))}
         </div>

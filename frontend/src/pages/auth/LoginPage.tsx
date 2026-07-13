@@ -6,8 +6,8 @@ import { motion } from 'framer-motion'
 import { useNavigate } from '@tanstack/react-router'
 import { Mail, Lock, Shield, Users, User } from 'lucide-react'
 import { useAuthStore } from '../../store/useAuthStore'
-import { Button } from '../../components/ui/Button'
-import { Input } from '../../components/ui/Input'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
 import { DEMO_CREDENTIALS } from '../../utils/constants'
 
 const loginSchema = z.object({

@@ -6,10 +6,20 @@ import {
   ClipboardList,
   Search,
 } from 'lucide-react'
-import { Card } from '../../components/ui/Card'
+import { Card } from '../../components/ui/card'
 import { Loader } from '../../components/ui/Loader'
-import { Badge } from '../../components/ui/Badge'
-import { Button } from '../../components/ui/Button'
+import { Badge } from '../../components/ui/badge'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
+import { Label } from '../../components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select'
+import { toast } from 'sonner'
 import { useAuthStore } from '../../store/useAuthStore'
 import { inventoryService } from '../../services/inventory.service'
 import type { StockItem, TransferRequest } from '../../types/inventory'
@@ -51,6 +61,7 @@ export const InventoryPage: React.FC = () => {
 
     if (!selectedProduct || !fromWarehouse || !toWarehouse) {
       setTransferError('Por favor selecciona todos los campos.')
+      toast.error('Por favor selecciona todos los campos.')
       return
     }
 
@@ -63,12 +74,15 @@ export const InventoryPage: React.FC = () => {
       }
       const result = await inventoryService.transferStock(data)
       setTransferSuccess(result.message)
+      toast.success(result.message)
       fetchStock()
     } catch (err: any) {
       if (err.response?.status === 403) {
         setTransferError('Acceso Denegado: No tienes permisos para modificar el stock.')
+        toast.error('Acceso Denegado: No tienes permisos para modificar el stock.')
       } else {
         setTransferError(err.response?.data?.detail || 'Error al procesar la transferencia.')
+        toast.error(err.response?.data?.detail || 'Error al procesar la transferencia.')
       }
     }
   }
@@ -103,14 +117,13 @@ export const InventoryPage: React.FC = () => {
         }
       >
         {/* Search */}
-        <div className="mb-4 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-          <input
+        <div className="mb-4">
+          <Input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por SKU, producto o almacén..."
-            className="w-full bg-background border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:border-nikeOrange outline-none"
+            icon={<Search className="w-4 h-4" />}
           />
         </div>
 
@@ -191,66 +204,57 @@ export const InventoryPage: React.FC = () => {
           <form onSubmit={handleTransfer} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
-                  Calzado / Producto
-                </label>
-                <select
-                  value={selectedProduct}
-                  onChange={(e) => setSelectedProduct(e.target.value)}
-                  className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-nikeOrange outline-none"
-                >
-                  <option value="">Selecciona Calzado</option>
-                  {uniqueProducts.map((p) => (
-                    <option key={p.id} value={String(p.id)}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                <Label>Calzado / Producto</Label>
+                <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona Calzado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {uniqueProducts.map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
-                  Cantidad
-                </label>
-                <input
+                <Label>Cantidad</Label>
+                <Input
                   type="number"
                   value={transferQty}
                   onChange={(e) => setTransferQty(parseInt(e.target.value))}
                   min={1}
-                  className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-nikeOrange outline-none"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
-                  Almacén Origen
-                </label>
-                <select
-                  value={fromWarehouse}
-                  onChange={(e) => setFromWarehouse(e.target.value)}
-                  className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-nikeOrange outline-none"
-                >
-                  <option value="">Selecciona Origen</option>
-                  <option value="1">Almacén Central Lima (Lima)</option>
-                  <option value="2">Almacén Logístico Callao (Callao)</option>
-                </select>
+                <Label>Almacén Origen</Label>
+                <Select value={fromWarehouse} onValueChange={setFromWarehouse}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona Origen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Almacén Central Lima (Lima)</SelectItem>
+                    <SelectItem value="2">Almacén Logístico Callao (Callao)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
-                  Almacén Destino
-                </label>
-                <select
-                  value={toWarehouse}
-                  onChange={(e) => setToWarehouse(e.target.value)}
-                  className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-nikeOrange outline-none"
-                >
-                  <option value="">Selecciona Destino</option>
-                  <option value="2">Almacén Logístico Callao (Callao)</option>
-                  <option value="1">Almacén Central Lima (Lima)</option>
-                </select>
+                <Label>Almacén Destino</Label>
+                <Select value={toWarehouse} onValueChange={setToWarehouse}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona Destino" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="2">Almacén Logístico Callao (Callao)</SelectItem>
+                    <SelectItem value="1">Almacén Central Lima (Lima)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

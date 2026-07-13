@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '../../store/useAuthStore'
 import { NAV_ITEMS } from '../../utils/constants'
-import clsx from 'clsx'
+import { cn } from '../../lib/utils'
 
 const iconMap: Record<string, React.ReactNode> = {
   LayoutDashboard: <LayoutDashboard className="w-5 h-5" />,
@@ -86,7 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           width: collapsed ? 80 : 260,
           x: mobileOpen ? 0 : undefined,
         }}
-        className={clsx(
+        className={cn(
           'fixed lg:sticky top-0 left-0 h-screen z-50 glass-panel border-r border-white/5 flex flex-col transition-all',
           !mobileOpen && 'max-lg:translate-x-[-100%] lg:translate-x-0',
         )}
@@ -121,10 +121,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 key={item.path}
                 to={item.path}
                 onClick={() => setMobileOpen(false)}
-                className={clsx(
+                className={cn(
                   'flex items-center gap-3 px-3 py-3 rounded-xl transition-all group relative',
                   isActive
-                    ? 'bg-nikeOrange/10 border border-nikeOrange/30 text-white'
+                    ? 'bg-primary/10 border border-primary/30 text-white'
                     : 'text-white/50 hover:text-white hover:bg-white/5 border border-transparent',
                 )}
               >
@@ -160,7 +160,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               logout()
               navigate({ to: '/login' })
             }}
-            className={clsx(
+            className={cn(
               'flex items-center gap-3 px-3 py-3 rounded-xl text-white/50 hover:text-red-400 hover:bg-red-500/10 transition-all w-full',
               collapsed && 'justify-center',
             )}
@@ -178,7 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className="hidden lg:flex absolute -right-3 top-20 w-6 h-6 rounded-full bg-nikeOrange items-center justify-center text-white shadow-lg hover:scale-110 transition-transform"
         >
           <ChevronLeft
-            className={clsx('w-4 h-4 transition-transform', collapsed && 'rotate-180')}
+            className={cn('w-4 h-4 transition-transform', collapsed && 'rotate-180')}
           />
         </button>
       </motion.aside>

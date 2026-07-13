@@ -1,6 +1,7 @@
 import React from 'react'
 import { Menu, Wifi, WifiOff, AlertTriangle, ShieldAlert } from 'lucide-react'
 import { useAuthStore } from '../../store/useAuthStore'
+import { Avatar, AvatarFallback } from '../ui/avatar'
 
 interface HeaderProps {
   title: string
@@ -66,9 +67,11 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* User avatar */}
-        <div className="w-10 h-10 rounded-full bg-nikeOrange/20 border border-nikeOrange/30 flex items-center justify-center text-nikeOrange font-bold text-sm">
-          {user?.username?.charAt(0).toUpperCase() || 'U'}
-        </div>
+        <Avatar className="w-10 h-10">
+          <AvatarFallback>
+            {user?.username?.charAt(0).toUpperCase() || 'U'}
+          </AvatarFallback>
+        </Avatar>
       </div>
     </header>
   )

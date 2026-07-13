@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { MessageSquare, Send, Loader2 } from 'lucide-react'
-import { Card } from '../../components/ui/Card'
+import { Card } from '../../components/ui/card'
+import { Button } from '../../components/ui/button'
 import { inventoryService } from '../../services/inventory.service'
 import type { ChatMessage } from '../../types/inventory'
 
@@ -120,15 +121,15 @@ export const ChatbotPage: React.FC = () => {
               value={chatMessage}
               onChange={(e) => setChatMessage(e.target.value)}
               placeholder="Pregunta sobre stock, jordan, pegasus..."
-              className="flex-1 bg-background border border-white/10 rounded-2xl px-4 py-3 text-sm focus:border-nikeOrange outline-none text-white"
+              className="flex-1 bg-background border border-white/10 rounded-2xl px-4 py-3 text-sm focus:border-primary outline-none text-white"
             />
-            <button
+            <Button
               type="submit"
               disabled={loadingChat || !chatMessage.trim()}
-              className="bg-nikeOrange text-white p-3.5 rounded-2xl hover:bg-nikeOrange/90 transition-colors disabled:opacity-40"
+              className="rounded-2xl p-3.5"
             >
               <Send className="w-4 h-4" />
-            </button>
+            </Button>
           </form>
         </Card>
       </div>

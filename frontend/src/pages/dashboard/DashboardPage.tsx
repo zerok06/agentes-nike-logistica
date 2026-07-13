@@ -23,9 +23,9 @@ import {
   Cell,
   Legend,
 } from 'recharts'
-import { Card } from '../../components/ui/Card'
+import { Card } from '../../components/ui/card'
 import { Loader } from '../../components/ui/Loader'
-import { Badge } from '../../components/ui/Badge'
+import { Badge } from '../../components/ui/badge'
 import { inventoryService } from '../../services/inventory.service'
 import type { StockItem } from '../../types/inventory'
 

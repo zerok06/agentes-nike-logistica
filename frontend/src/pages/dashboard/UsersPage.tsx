@@ -1,11 +1,29 @@
 import React, { useEffect, useState } from 'react'
 import { Users as UsersIcon, Shield, User as UserIcon, RefreshCw, Plus } from 'lucide-react'
-import { Card } from '../../components/ui/Card'
+import { Card } from '../../components/ui/card'
 import { Loader } from '../../components/ui/Loader'
-import { Badge } from '../../components/ui/Badge'
-import { Button } from '../../components/ui/Button'
+import { Badge } from '../../components/ui/badge'
+import { Button } from '../../components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '../../components/ui/dialog'
+import { Input } from '../../components/ui/input'
+import { Label } from '../../components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select'
 import { useAuthStore } from '../../store/useAuthStore'
 import { authService } from '../../services/auth.service'
+import { toast } from 'sonner'
 import type { User, UserRole } from '../../types/auth'
 
 const roleConfig: Record<string, { label: string; variant: 'danger' | 'info' | 'success'; icon: React.ReactNode }> = {
@@ -117,7 +135,7 @@ export const UsersPage: React.FC = () => {
       </Card>
 
       {showForm && (
-        <RegisterUserForm
+        <RegisterUserDialog
           onClose={() => setShowForm(false)}
           onCreated={fetchUsers}
         />
@@ -126,7 +144,7 @@ export const UsersPage: React.FC = () => {
   )
 }
 
-const RegisterUserForm: React.FC<{ onClose: () => void; onCreated: () => void }> = ({
+const RegisterUserDialog: React.FC<{ onClose: () => void; onCreated: () => void }> = ({
   onClose,
   onCreated,
 }) => {
@@ -144,86 +162,84 @@ const RegisterUserForm: React.FC<{ onClose: () => void; onCreated: () => void }>
     setError(null)
     try {
       await register({ email, username, password, role })
+      toast.success('Usuario creado correctamente')
       onCreated()
       onClose()
     } catch (err: any) {
       setError(err.message || 'Error al crear usuario')
+      toast.error(err.message || 'Error al crear usuario')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Card title="Nuevo Usuario" icon={<Plus className="w-5 h-5 text-nikeOrange" />}>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-nikeOrange outline-none"
-              required
-            />
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Nuevo Usuario</DialogTitle>
+          <DialogDescription>Registra un nuevo usuario en el sistema</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>Username</Label>
+              <Input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+            </div>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
-              Username
-            </label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-nikeOrange outline-none"
-              required
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label>Contraseña</Label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>Rol</Label>
+              <Select value={role} onValueChange={(val) => setRole(val as UserRole)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Administrador</SelectItem>
+                  <SelectItem value="supervisor">Supervisor</SelectItem>
+                  <SelectItem value="operador">Operador</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
-              Contraseña
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-nikeOrange outline-none"
-              required
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-white/40 uppercase tracking-wider font-semibold">
-              Rol
-            </label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as UserRole)}
-              className="bg-background border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-nikeOrange outline-none"
-            >
-              <option value="admin">Administrador</option>
-              <option value="supervisor">Supervisor</option>
-              <option value="operador">Operador</option>
-            </select>
-          </div>
-        </div>
 
-        {error && (
-          <div className="text-xs text-red-400 font-semibold bg-red-500/10 border border-red-500/20 p-3 rounded-xl">
-            {error}
-          </div>
-        )}
+          {error && (
+            <div className="text-xs text-red-400 font-semibold bg-red-500/10 border border-red-500/20 p-3 rounded-xl">
+              {error}
+            </div>
+          )}
 
-        <div className="flex gap-3">
-          <Button type="submit" loading={loading}>Crear Usuario</Button>
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-        </div>
-      </form>
-    </Card>
+          <DialogFooter>
+            <Button type="submit" loading={loading}>Crear Usuario</Button>
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
