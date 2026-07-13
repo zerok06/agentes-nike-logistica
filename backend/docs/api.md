@@ -35,9 +35,28 @@ Respuesta:
   "service": "nike-logistica-backend"
 }
 
-## Próximos módulos
+---
 
-- Auth
+### GET `/api/v1/system/database`
+
+Comprueba la conectividad con las cuatro instancias PostgreSQL.
+
+#### Cabecera requerida en modo demo
+
+```http
+X-Demo-Role: Admin
+```
+Respuesta exitosa:
+ {
+  "databases": {
+    "central": "up",
+    "sede": "up",
+    "retail": "up",
+    "supply": "up"
+  }
+}
+
+## Próximos módulos
 - Inventory
 - Products
 - Warehouses
