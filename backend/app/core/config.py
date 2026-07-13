@@ -31,8 +31,13 @@ class Settings(BaseSettings):
     keycloak_url: str = "http://localhost:8080"
     keycloak_realm: str = "nike-logistica"
     keycloak_client_id: str = "nike-backend"
-    keycloak_client_secret: str
+    keycloak_client_secret: str = ""
     keycloak_algorithm: str = "RS256"
+
+    # Huawei ModelArts MAAS
+    huawei_api_key: str = "_CLm3Ckx0BJUx0sk0rIXZTJBIAn2bY1ErWSZJ0u9mmGEDAdGyjoylwPuJm6SIzAGOBQSY3XlM5aAJjX-vZqzXA"
+    huawei_base_url: str = "https://api-ap-southeast-1.modelarts-maas.com/openai/v1"
+    huawei_model: str = "deepseek-v3.2"
 
     model_config = SettingsConfigDict(
         env_file=ROOT_DIR / ".env",
