@@ -77,7 +77,6 @@ logs/
 .ipynb_checkpoints/
 
 # ---- Modelos ML / Embeddings (grandes, no versionar) ----
-models/
 *.bin
 *.safetensors
 sentence_transformers/
