@@ -30,7 +30,14 @@ class Settings(BaseSettings):
     keycloak_client_secret: str = ""
     keycloak_algorithm: str = "RS256"
 
-    # Huawei ModelArts MAAS
+    # Groq API (LLM del chatbot)
+    groq_api_key: str = ""
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    groq_model: str = "llama-3.1-8b-instant"
+    groq_max_tokens: int = 2048
+    groq_temperature: float = 0.3
+
+    # Huawei ModelArts MAAS (legacy, no usado por defecto)
     huawei_api_key: str = ""
     huawei_base_url: str = "https://api-ap-southeast-1.modelarts-maas.com/openai/v1"
     huawei_model: str = "deepseek-v3.2"

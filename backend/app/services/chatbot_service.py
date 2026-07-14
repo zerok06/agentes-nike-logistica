@@ -12,10 +12,12 @@ from app.repositories.inventory_repository import InventoryRepository
 logger = logging.getLogger(__name__)
 
 client = AsyncOpenAI(
-    api_key=settings.huawei_api_key,
-    base_url=settings.huawei_base_url
+    api_key=settings.groq_api_key,
+    base_url=settings.groq_base_url
 )
-MODEL_NAME = settings.huawei_model
+MODEL_NAME = settings.groq_model
+MAX_TOKENS = settings.groq_max_tokens
+TEMPERATURE = settings.groq_temperature
 
 def sanitize_input(user_input: str) -> str:
     """LLM01: Sanitizador para evitar inyección de prompts."""
@@ -191,7 +193,8 @@ INSTRUCCIONES:
                 {"role": "user", "content": clean_question}
             ],
             model=MODEL_NAME,
-            temperature=0.3, 
+            temperature=TEMPERATURE,
+            max_tokens=MAX_TOKENS,
         )
         
         raw_response = chat_completion.choices[0].message.content
