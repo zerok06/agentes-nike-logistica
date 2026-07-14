@@ -35,3 +35,17 @@ export interface ChatMessage {
   text: string
   timestamp: Date
 }
+
+export interface BarcodeResult {
+  sku: string
+  product_name: string
+  model: string | null
+  unit_price: number
+  stock_by_warehouse: {
+    warehouse_name: string
+    city: string | null
+    stock_qty: number
+    min_stock: number
+    is_critical: boolean
+  }[]
+}

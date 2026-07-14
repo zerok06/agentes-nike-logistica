@@ -1,5 +1,5 @@
 import api from './api'
-import type { StockItem, TransferRequest, AuditLog } from '../types/inventory'
+import type { StockItem, TransferRequest, AuditLog, BarcodeResult } from '../types/inventory'
 
 export const inventoryService = {
   async getStock(): Promise<StockItem[]> {
@@ -19,6 +19,11 @@ export const inventoryService = {
 
   async sendChatMessage(message: string): Promise<{ response: string }> {
     const res = await api.post<{ response: string }>('/chat/', { message })
+    return res.data
+  },
+
+  async searchByBarcode(barcode: string): Promise<BarcodeResult[]> {
+    const res = await api.post<BarcodeResult[]>('/chat/barcode', { barcode })
     return res.data
   },
 }

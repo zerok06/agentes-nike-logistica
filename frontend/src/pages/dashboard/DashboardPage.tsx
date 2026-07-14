@@ -4,281 +4,241 @@ import {
   AlertTriangle,
   TrendingUp,
   DollarSign,
-  ArrowRight,
   Activity,
   Warehouse as WarehouseIcon,
+  Truck,
+  Clock,
+  Gauge,
+  Boxes,
+  ArrowRight,
+  RefreshCw,
+  Download,
 } from 'lucide-react'
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, PieChart, Pie, Cell, Legend,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from 'recharts'
-import { Card } from '../../components/ui/card'
 import { Loader } from '../../components/ui/Loader'
 import { Badge } from '../../components/ui/badge'
-import { inventoryService } from '../../services/inventory.service'
-import type { StockItem } from '../../types/inventory'
-
-const COLORS = ['#FA5400', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
+import { MetricCard } from '../../components/metrics/MetricCard'
+import { ExportButton } from '../../components/metrics/ExportButton'
+import {
+  ChartContainer,
+  chartTooltipStyle,
+  chartAxisStyle,
+  chartGridStyle,
+  CHART_COLORS,
+  COLOR_PALETTE,
+} from '../../components/metrics/ChartContainer'
+import { metricsService } from '../../services/metrics.service'
+import type {
+  MetricsSummary,
+  WarehousePerformance,
+  MovementTrend,
+  TopProduct,
+  CategoryDistribution,
+  Alert,
+  ShipmentStats,
+  StockByWarehouse,
+} from '../../types/metrics'
 
 export const DashboardPage: React.FC = () => {
-  const [stock, setStock] = useState<StockItem[]>([])
+  const [summary, setSummary] = useState<MetricsSummary | null>(null)
+  const [warehousePerf, setWarehousePerf] = useState<WarehousePerformance[]>([])
+  const [trends, setTrends] = useState<MovementTrend[]>([])
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([])
+  const [categories, setCategories] = useState<CategoryDistribution[]>([])
+  const [alerts, setAlerts] = useState<Alert[]>([])
+  const [shipStats, setShipStats] = useState<ShipmentStats | null>(null)
+  const [stockByWh, setStockByWh] = useState<StockByWarehouse[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const fetchAll = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true)
+    else setLoading(true)
+    try {
+      const [s, wp, tr, tp, cat, al, sh, sbw] = await Promise.all([
+        metricsService.getSummary(),
+        metricsService.getWarehousePerformance(),
+        metricsService.getTrends(7),
+        metricsService.getTopProducts(10),
+        metricsService.getCategoryDistribution(),
+        metricsService.getAlerts(),
+        metricsService.getShipmentStats(),
+        metricsService.getStockByWarehouse(),
+      ])
+      setSummary(s)
+      setWarehousePerf(wp)
+      setTrends(tr)
+      setTopProducts(tp)
+      setCategories(cat)
+      setAlerts(al)
+      setShipStats(sh)
+      setStockByWh(sbw)
+    } catch {
+      // silent
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const data = await inventoryService.getStock()
-        setStock(data)
-      } catch {
-        // Error silencioso en dashboard
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchData()
+    fetchAll()
+    const interval = setInterval(() => fetchAll(true), 30000)
+    return () => clearInterval(interval)
   }, [])
 
-  if (loading) return <Loader label="Cargando dashboard..." />
+  if (loading) return <Loader label="Cargando dashboard de métricas..." />
 
-  const totalProducts = new Set(stock.map((s) => s.sku)).size
-  const criticalStock = stock.filter((s) => s.stock_qty < s.min_stock).length
-  const totalUnits = stock.reduce((sum, s) => sum + s.stock_qty, 0)
-  const totalValue = stock.reduce((sum, s) => sum + s.stock_qty * 100, 0)
+  const stockStatusData = summary ? [
+    { name: 'Normal', value: summary.normal_units, color: CHART_COLORS.green },
+    { name: 'Crítico', value: summary.critical_units, color: CHART_COLORS.red },
+  ] : []
 
-  const warehouseData = stock.reduce((acc, item) => {
-    const existing = acc.find((w) => w.name === item.warehouse_name)
-    if (existing) {
-      existing.qty += item.stock_qty
-    } else {
-      acc.push({ name: item.warehouse_name, qty: item.stock_qty })
-    }
-    return acc
-  }, [] as { name: string; qty: number }[])
+  const shipmentStatusData = shipStats
+    ? Object.entries(shipStats.by_status).map(([name, value], i) => ({
+        name,
+        value,
+        color: COLOR_PALETTE[i % COLOR_PALETTE.length],
+      }))
+    : []
 
-  const movimientosArea = [
-    { name: 'Lun', entradas: 120, salidas: 80, traslados: 12 },
-    { name: 'Mar', entradas: 200, salidas: 150, traslados: 19 },
-    { name: 'Mié', entradas: 150, salidas: 120, traslados: 15 },
-    { name: 'Jue', entradas: 280, salidas: 200, traslados: 25 },
-    { name: 'Vie', entradas: 240, salidas: 180, traslados: 22 },
-    { name: 'Sáb', entradas: 180, salidas: 100, traslados: 18 },
-    { name: 'Dom', entradas: 80, salidas: 40, traslados: 8 },
-  ]
+  const radarData = warehousePerf.map((w) => ({
+    warehouse: w.city || w.warehouse_name,
+    Stock: w.total_stock,
+    Productos: w.product_count * 10,
+    Utilización: w.utilization * 10,
+  }))
 
-  const stockTrendArea = [
-    { name: 'Sem 1', lima: 3200, arequipa: 1800, trujillo: 1200, cusco: 800 },
-    { name: 'Sem 2', lima: 3400, arequipa: 1900, trujillo: 1100, cusco: 850 },
-    { name: 'Sem 3', lima: 3100, arequipa: 2000, trujillo: 1300, cusco: 900 },
-    { name: 'Sem 4', lima: 3600, arequipa: 2100, trujillo: 1250, cusco: 820 },
-    { name: 'Sem 5', lima: 3800, arequipa: 1950, trujillo: 1400, cusco: 880 },
-    { name: 'Sem 6', lima: 3500, arequipa: 2200, trujillo: 1500, cusco: 950 },
-  ]
-
-  const roleDistribution = [
-    { name: 'Normal', value: stock.length - criticalStock },
-    { name: 'Crítico', value: criticalStock },
-  ]
-
-  const kpis = [
-    {
-      label: 'Total Productos',
-      value: totalProducts.toString(),
-      icon: <Package className="w-5 h-5 text-nikeOrange" />,
-      color: 'text-nikeOrange',
-    },
-    {
-      label: 'Stock Crítico',
-      value: criticalStock.toString(),
-      icon: <AlertTriangle className="w-5 h-5 text-red-500" />,
-      color: 'text-red-500',
-    },
-    {
-      label: 'Total Unidades',
-      value: totalUnits.toLocaleString(),
-      icon: <TrendingUp className="w-5 h-5 text-green-500" />,
-      color: 'text-green-500',
-    },
-    {
-      label: 'Valor Estimado',
-      value: `$${(totalValue / 1000).toFixed(1)}K`,
-      icon: <DollarSign className="w-5 h-5 text-blue-400" />,
-      color: 'text-blue-400',
-    },
-  ]
+  const carrierData = shipStats
+    ? Object.entries(shipStats.by_carrier).map(([name, count]) => ({ name, count }))
+    : []
 
   return (
-    <div className="space-y-6">
-      {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((kpi) => (
-          <Card key={kpi.label}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-white/40 uppercase tracking-wider font-semibold">
-                  {kpi.label}
-                </p>
-                <p className={`text-3xl font-bold mt-2 ${kpi.color}`}>{kpi.value}</p>
-              </div>
-              <div className="p-3 rounded-2xl bg-white/5">{kpi.icon}</div>
-            </div>
-          </Card>
-        ))}
+    <div className="space-y-4 lg:space-y-6">
+      {/* KPIs Row 1 - Inventario */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+        <MetricCard
+          label="Total Unidades"
+          value={summary?.total_stock.toLocaleString() || '0'}
+          icon={<Package className="w-5 h-5 lg:w-6 lg:h-6 text-nikeOrange" />}
+          color="text-white/90"
+          iconBg="bg-nikeOrange/10"
+          subtitle={`${summary?.total_products || 0} productos`}
+        />
+        <MetricCard
+          label="Valor Inventario"
+          value={`$${((summary?.total_value || 0) / 1000).toFixed(1)}K`}
+          icon={<DollarSign className="w-5 h-5 lg:w-6 lg:h-6 text-blue-400" />}
+          color="text-blue-400"
+          iconBg="bg-blue-500/10"
+          subtitle="Valor total stock"
+        />
+        <MetricCard
+          label="Stock Crítico"
+          value={summary?.critical_count || 0}
+          icon={<AlertTriangle className="w-5 h-5 lg:w-6 lg:h-6 text-red-400" />}
+          color="text-red-400"
+          iconBg="bg-red-500/10"
+          subtitle={`${summary?.critical_units || 0} unidades`}
+        />
+        <MetricCard
+          label="Rotación"
+          value={summary?.inventory_turnover.toFixed(2) || '0'}
+          icon={<TrendingUp className="w-5 h-5 lg:w-6 lg:h-6 text-green-400" />}
+          color="text-green-400"
+          iconBg="bg-green-500/10"
+          subtitle={`${summary?.days_of_inventory || 0} días inventario`}
+        />
       </div>
 
-      {/* Area Chart - Movimientos */}
-      <Card
-        title="Movimientos de Inventario (Semanal)"
-        icon={<Activity className="w-5 h-5 text-nikeOrange" />}
-      >
-        <ResponsiveContainer width="100%" height={350}>
-          <AreaChart data={movimientosArea}>
-            <defs>
-              <linearGradient id="colorEntradas" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#FA5400" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="#FA5400" stopOpacity={0.1} />
-              </linearGradient>
-              <linearGradient id="colorSalidas" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#00C49F" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="#00C49F" stopOpacity={0.1} />
-              </linearGradient>
-              <linearGradient id="colorTraslados" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#FFBB28" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="#FFBB28" stopOpacity={0.1} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis dataKey="name" stroke="rgba(255,255,255,0.4)" fontSize={12} tickLine={false} />
-            <YAxis stroke="rgba(255,255,255,0.4)" fontSize={12} tickLine={false} />
-            <Tooltip
-              contentStyle={{
-                background: '#1C1C1E',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '12px',
-              }}
-            />
-            <Legend wrapperStyle={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }} />
-            <Area
-              type="monotone"
-              dataKey="entradas"
-              stroke="#FA5400"
-              strokeWidth={2}
-              fill="url(#colorEntradas)"
-              name="Entradas"
-            />
-            <Area
-              type="monotone"
-              dataKey="salidas"
-              stroke="#00C49F"
-              strokeWidth={2}
-              fill="url(#colorSalidas)"
-              name="Salidas"
-            />
-            <Area
-              type="monotone"
-              dataKey="traslados"
-              stroke="#FFBB28"
-              strokeWidth={2}
-              fill="url(#colorTraslados)"
-              name="Traslados"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </Card>
+      {/* KPIs Row 2 - Logística */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+        <MetricCard
+          label="Tasa Cumplimiento"
+          value={`${summary?.fulfillment_rate || 0}%`}
+          icon={<Gauge className="w-5 h-5 lg:w-6 lg:h-6 text-green-400" />}
+          color="text-green-400"
+          iconBg="bg-green-500/10"
+          subtitle="Pedidos completados"
+        />
+        <MetricCard
+          label="Tiempo de Ciclo"
+          value={`${summary?.cycle_time_hours || 0}h`}
+          icon={<Clock className="w-5 h-5 lg:w-6 lg:h-6 text-yellow-400" />}
+          color="text-yellow-400"
+          iconBg="bg-yellow-500/10"
+          subtitle="Orden → entrega"
+        />
+        <MetricCard
+          label="Utilización Cap."
+          value={`${summary?.capacity_utilization || 0}%`}
+          icon={<Boxes className="w-5 h-5 lg:w-6 lg:h-6 text-purple-400" />}
+          color="text-purple-400"
+          iconBg="bg-purple-500/10"
+          subtitle="Espacio usado"
+        />
+        <MetricCard
+          label="Envíos Activos"
+          value={summary?.in_transit || 0}
+          icon={<Truck className="w-5 h-5 lg:w-6 lg:h-6 text-nikeOrange" />}
+          color="text-nikeOrange"
+          iconBg="bg-nikeOrange/10"
+          subtitle={`${summary?.prep_shipments || 0} en prep · ${summary?.delivered_shipments || 0} entregados`}
+        />
+      </div>
 
-      {/* Stock trend by city - Area Chart */}
-      <Card
-        title="Tendencia de Stock por Sede"
-        icon={<WarehouseIcon className="w-5 h-5 text-nikeOrange" />}
-      >
-        <ResponsiveContainer width="100%" height={350}>
-          <AreaChart data={stockTrendArea}>
-            <defs>
-              <linearGradient id="colorLima" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#FA5400" stopOpacity={0.6} />
-                <stop offset="95%" stopColor="#FA5400" stopOpacity={0.05} />
-              </linearGradient>
-              <linearGradient id="colorArequipa" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#00C49F" stopOpacity={0.6} />
-                <stop offset="95%" stopColor="#00C49F" stopOpacity={0.05} />
-              </linearGradient>
-              <linearGradient id="colorTrujillo" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#FFBB28" stopOpacity={0.6} />
-                <stop offset="95%" stopColor="#FFBB28" stopOpacity={0.05} />
-              </linearGradient>
-              <linearGradient id="colorCusco" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#8884D8" stopOpacity={0.6} />
-                <stop offset="95%" stopColor="#8884D8" stopOpacity={0.05} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis dataKey="name" stroke="rgba(255,255,255,0.4)" fontSize={12} tickLine={false} />
-            <YAxis stroke="rgba(255,255,255,0.4)" fontSize={12} tickLine={false} />
-            <Tooltip
-              contentStyle={{
-                background: '#1C1C1E',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '12px',
-              }}
-            />
-            <Legend wrapperStyle={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }} />
-            <Area type="monotone" dataKey="lima" stroke="#FA5400" strokeWidth={2} fill="url(#colorLima)" name="Lima" />
-            <Area type="monotone" dataKey="arequipa" stroke="#00C49F" strokeWidth={2} fill="url(#colorArequipa)" name="Arequipa" />
-            <Area type="monotone" dataKey="trujillo" stroke="#FFBB28" strokeWidth={2} fill="url(#colorTrujillo)" name="Trujillo" />
-            <Area type="monotone" dataKey="cusco" stroke="#8884D8" strokeWidth={2} fill="url(#colorCusco)" name="Cusco" />
-          </AreaChart>
-        </ResponsiveContainer>
-      </Card>
-
-      {/* Bottom row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card
-          title="Stock por Almacén"
-          icon={<Package className="w-5 h-5 text-nikeOrange" />}
+      {/* Charts Row 1 - Trends + Stock Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+        {/* Movement Trends - Area Chart */}
+        <ChartContainer
+          title="Movimientos de Inventario (7 días)"
+          icon={<Activity className="w-5 h-5 text-nikeOrange" />}
+          className="lg:col-span-2"
+          action={
+            <button
+              onClick={() => fetchAll(true)}
+              className="text-xs text-nikeOrange hover:text-white transition-colors flex items-center gap-1"
+            >
+              <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
+            </button>
+          }
         >
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={warehouseData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis
-                dataKey="name"
-                stroke="rgba(255,255,255,0.4)"
-                fontSize={10}
-                tickLine={false}
-                angle={-15}
-                textAnchor="end"
-                height={60}
-              />
-              <YAxis stroke="rgba(255,255,255,0.4)" fontSize={12} tickLine={false} />
-              <Tooltip
-                contentStyle={{
-                  background: '#1C1C1E',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '12px',
-                }}
-              />
-              <Bar dataKey="qty" fill="#FA5400" radius={[8, 8, 0, 0]} />
-            </BarChart>
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={trends}>
+              <defs>
+                <linearGradient id="colorEntradas" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={CHART_COLORS.nikeOrange} stopOpacity={0.8} />
+                  <stop offset="95%" stopColor={CHART_COLORS.nikeOrange} stopOpacity={0.1} />
+                </linearGradient>
+                <linearGradient id="colorSalidas" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={CHART_COLORS.green} stopOpacity={0.8} />
+                  <stop offset="95%" stopColor={CHART_COLORS.green} stopOpacity={0.1} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid {...chartGridStyle} />
+              <XAxis dataKey="date" {...chartAxisStyle} fontSize={10} />
+              <YAxis {...chartAxisStyle} />
+              <Tooltip contentStyle={chartTooltipStyle} />
+              <Legend wrapperStyle={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }} />
+              <Area type="monotone" dataKey="entradas" stroke={CHART_COLORS.nikeOrange} strokeWidth={2} fill="url(#colorEntradas)" name="Entradas" />
+              <Area type="monotone" dataKey="salidas" stroke={CHART_COLORS.green} strokeWidth={2} fill="url(#colorSalidas)" name="Salidas" />
+            </AreaChart>
           </ResponsiveContainer>
-        </Card>
+        </ChartContainer>
 
-        <Card
+        {/* Stock Status - Pie Chart */}
+        <ChartContainer
           title="Estado de Stock"
           icon={<AlertTriangle className="w-5 h-5 text-nikeOrange" />}
         >
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={roleDistribution}
+                data={stockStatusData}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
@@ -286,82 +246,255 @@ export const DashboardPage: React.FC = () => {
                 paddingAngle={5}
                 dataKey="value"
               >
-                {roleDistribution.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                {stockStatusData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip
-                contentStyle={{
-                  background: '#1C1C1E',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '12px',
-                }}
-              />
+              <Tooltip contentStyle={chartTooltipStyle} />
               <Legend wrapperStyle={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }} />
             </PieChart>
           </ResponsiveContainer>
-        </Card>
-
-        <Card
-          title="Alertas de Stock Crítico"
-          icon={<AlertTriangle className="w-5 h-5 text-red-500" />}
-        >
-          <div className="space-y-3 max-h-[200px] overflow-y-auto">
-            {stock
-              .filter((s) => s.stock_qty < s.min_stock)
-              .slice(0, 5)
-              .map((item) => (
-                <div
-                  key={item.inventory_id}
-                  className="flex items-center justify-between p-2 rounded-lg bg-red-500/5"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-white/90">
-                      {item.product_name}
-                    </p>
-                    <p className="text-xs text-white/40">{item.warehouse_name}</p>
-                  </div>
-                  <Badge variant="danger">{item.stock_qty} u.</Badge>
-                </div>
-              ))}
-            {criticalStock === 0 && (
-              <p className="text-sm text-white/30 text-center py-8">
-                No hay alertas de stock crítico.
-              </p>
-            )}
-          </div>
-        </Card>
+        </ChartContainer>
       </div>
 
-      {/* Quick actions */}
-      <Card
-        title="Acciones Rápidas"
-        icon={<ArrowRight className="w-5 h-5 text-nikeOrange" />}
-      >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <a
-            href="/inventory"
-            className="flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+      {/* Charts Row 2 - Warehouse Radar + Stock by Warehouse Bar */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        {/* Warehouse Radar Chart */}
+        <ChartContainer
+          title="Performance por Almacén (Radar)"
+          icon={<WarehouseIcon className="w-5 h-5 text-nikeOrange" />}
+        >
+          <ResponsiveContainer width="100%" height={300}>
+            <RadarChart data={radarData}>
+              <PolarGrid stroke="rgba(255,255,255,0.1)" />
+              <PolarAngleAxis dataKey="warehouse" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 11 }} />
+              <PolarRadiusAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} />
+              <Radar name="Stock" dataKey="Stock" stroke={CHART_COLORS.nikeOrange} fill={CHART_COLORS.nikeOrange} fillOpacity={0.3} strokeWidth={2} />
+              <Radar name="Utilización" dataKey="Utilización" stroke={CHART_COLORS.blue} fill={CHART_COLORS.blue} fillOpacity={0.2} strokeWidth={2} />
+              <Legend wrapperStyle={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }} />
+              <Tooltip contentStyle={chartTooltipStyle} />
+            </RadarChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+
+        {/* Stock by Warehouse - Bar Chart */}
+        <ChartContainer
+          title="Stock por Almacén"
+          icon={<Package className="w-5 h-5 text-nikeOrange" />}
+        >
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={stockByWh}>
+              <CartesianGrid {...chartGridStyle} />
+              <XAxis dataKey="name" {...chartAxisStyle} fontSize={10} angle={-15} textAnchor="end" height={60} />
+              <YAxis {...chartAxisStyle} />
+              <Tooltip contentStyle={chartTooltipStyle} />
+              <Legend wrapperStyle={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }} />
+              <Bar dataKey="normal" stackId="a" fill={CHART_COLORS.green} name="Normal" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="critical" stackId="a" fill={CHART_COLORS.red} name="Crítico" radius={[8, 8, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+      </div>
+
+      {/* Charts Row 3 - Top Products + Category Distribution */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        {/* Top Products - Horizontal Bar */}
+        <ChartContainer
+          title="Top 10 Productos por Stock"
+          icon={<Package className="w-5 h-5 text-nikeOrange" />}
+        >
+          <ResponsiveContainer width="100%" height={350}>
+            <BarChart data={topProducts} layout="vertical">
+              <CartesianGrid {...chartGridStyle} />
+              <XAxis type="number" {...chartAxisStyle} />
+              <YAxis
+                type="category"
+                dataKey="product_name"
+                {...chartAxisStyle}
+                fontSize={10}
+                width={120}
+                tickFormatter={(v: string) => v.length > 18 ? v.substring(0, 18) + '...' : v}
+              />
+              <Tooltip contentStyle={chartTooltipStyle} />
+              <Bar dataKey="total_stock" fill={CHART_COLORS.nikeOrange} radius={[0, 8, 8, 0]} name="Stock" />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+
+        {/* Category Distribution - Pie */}
+        <ChartContainer
+          title="Distribución por Categoría"
+          icon={<Boxes className="w-5 h-5 text-nikeOrange" />}
+        >
+          <ResponsiveContainer width="100%" height={350}>
+            <PieChart>
+              <Pie
+                data={categories}
+                cx="50%"
+                cy="50%"
+                outerRadius={100}
+                dataKey="total_stock"
+                nameKey="name"
+                label={(entry: any) => entry.name}
+                labelLine={false}
+                style={{ fontSize: '10px', fill: 'rgba(255,255,255,0.6)' }}
+              >
+                {categories.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={COLOR_PALETTE[index % COLOR_PALETTE.length]} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={chartTooltipStyle} />
+            </PieChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+      </div>
+
+      {/* Charts Row 4 - Shipment Status + Carrier */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        {/* Shipment Status - Pie */}
+        <ChartContainer
+          title="Estado de Envíos"
+          icon={<Truck className="w-5 h-5 text-nikeOrange" />}
+        >
+          <ResponsiveContainer width="100%" height={250}>
+            <PieChart>
+              <Pie
+                data={shipmentStatusData}
+                cx="50%"
+                cy="50%"
+                innerRadius={50}
+                outerRadius={80}
+                paddingAngle={5}
+                dataKey="value"
+              >
+                {shipmentStatusData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={chartTooltipStyle} />
+              <Legend wrapperStyle={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+
+        {/* Carrier Distribution - Bar */}
+        <ChartContainer
+          title="Envíos por Transportista"
+          icon={<Truck className="w-5 h-5 text-nikeOrange" />}
+        >
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={carrierData}>
+              <CartesianGrid {...chartGridStyle} />
+              <XAxis dataKey="name" {...chartAxisStyle} fontSize={11} />
+              <YAxis {...chartAxisStyle} />
+              <Tooltip contentStyle={chartTooltipStyle} />
+              <Bar dataKey="count" fill={CHART_COLORS.blue} radius={[8, 8, 0, 0]} name="Envíos" />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+      </div>
+
+      {/* Alerts + Warehouse Table + Export */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+        {/* Alerts */}
+        <ChartContainer
+          title={`Alertas (${alerts.length})`}
+          icon={<AlertTriangle className="w-5 h-5 text-red-400" />}
+        >
+          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+            {alerts.length === 0 ? (
+              <p className="text-sm text-white/30 text-center py-8">No hay alertas activas.</p>
+            ) : (
+              alerts.map((alert, i) => (
+                <div
+                  key={i}
+                  className={`p-2.5 rounded-lg border ${
+                    alert.severity === 'high'
+                      ? 'bg-red-500/5 border-red-500/20'
+                      : 'bg-yellow-500/5 border-yellow-500/20'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs font-semibold text-white/90">{alert.title}</p>
+                    <Badge variant={alert.severity === 'high' ? 'danger' : 'warning'}>
+                      {alert.severity}
+                    </Badge>
+                  </div>
+                  <p className="text-[10px] text-white/40 mt-1">{alert.description}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </ChartContainer>
+
+        {/* Warehouse Performance Table */}
+        <ChartContainer
+          title="Performance por Almacén"
+          icon={<WarehouseIcon className="w-5 h-5 text-nikeOrange" />}
+        >
+          <div className="space-y-3">
+            {warehousePerf.map((w) => (
+              <div key={w.warehouse_id} className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-white/90">{w.warehouse_name}</p>
+                    <p className="text-[10px] text-white/40">{w.city} · {w.product_count} productos</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-white/90">{w.total_stock}</p>
+                    <p className="text-[10px] text-white/40">{w.utilization}% cap.</p>
+                  </div>
+                </div>
+                <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${Math.min(100, w.utilization)}%`,
+                      background: w.utilization > 80 ? CHART_COLORS.red : w.utilization > 60 ? CHART_COLORS.yellow : CHART_COLORS.green,
+                    }}
+                  />
+                </div>
+                {w.critical_count > 0 && (
+                  <Badge variant="danger" className="text-[10px]">{w.critical_count} críticos</Badge>
+                )}
+              </div>
+            ))}
+          </div>
+        </ChartContainer>
+
+        {/* Export + Quick Actions */}
+        <div className="space-y-4">
+          <ChartContainer
+            title="Exportar Reportes"
+            icon={<Download className="w-5 h-5 text-nikeOrange" />}
           >
-            <span className="text-sm font-semibold text-white/90">Ver Inventario</span>
-            <ArrowRight className="w-4 h-4 text-nikeOrange" />
-          </a>
-          <a
-            href="/chatbot"
-            className="flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+            <div className="space-y-3">
+              <p className="text-xs text-white/40">Descarga métricas en formato CSV</p>
+              <ExportButton />
+            </div>
+          </ChartContainer>
+
+          <ChartContainer
+            title="Acciones Rápidas"
+            icon={<ArrowRight className="w-5 h-5 text-nikeOrange" />}
           >
-            <span className="text-sm font-semibold text-white/90">Consultar Asistente IA</span>
-            <ArrowRight className="w-4 h-4 text-nikeOrange" />
-          </a>
-          <a
-            href="/tracking"
-            className="flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
-          >
-            <span className="text-sm font-semibold text-white/90">Ver Tracking GPS</span>
-            <ArrowRight className="w-4 h-4 text-nikeOrange" />
-          </a>
+            <div className="space-y-2">
+              <a href="/inventory" className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                <span className="text-sm font-semibold text-white/90">Ver Inventario</span>
+                <ArrowRight className="w-4 h-4 text-nikeOrange" />
+              </a>
+              <a href="/chatbot" className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                <span className="text-sm font-semibold text-white/90">Asistente IA</span>
+                <ArrowRight className="w-4 h-4 text-nikeOrange" />
+              </a>
+              <a href="/tracking" className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                <span className="text-sm font-semibold text-white/90">Tracking GPS</span>
+                <ArrowRight className="w-4 h-4 text-nikeOrange" />
+              </a>
+            </div>
+          </ChartContainer>
         </div>
-      </Card>
+      </div>
     </div>
   )
 }

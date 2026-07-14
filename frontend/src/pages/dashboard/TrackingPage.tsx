@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   MapContainer,
@@ -21,6 +21,8 @@ import {
   Bike,
   MapPin,
   Navigation,
+  Gauge,
+  Route as RouteIcon,
 } from 'lucide-react'
 import { Card } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
@@ -33,6 +35,7 @@ import {
   DialogDescription,
 } from '../../components/ui/dialog'
 import { Progress } from '../../components/ui/progress'
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs'
 
 import 'leaflet/dist/leaflet.css'
 
@@ -49,22 +52,28 @@ interface Sede {
   status: 'active' | 'warning' | 'critical'
 }
 
+type VehicleStatus = 'en_transito' | 'pendiente' | 'entregado' | 'retrasado'
+type VehicleType = 'truck' | 'van' | 'bike'
+
 interface Vehicle {
   id: string
-  type: 'truck' | 'van' | 'bike'
+  type: VehicleType
   driver: string
   origin: string
   destination: string
-  originLat: number
-  originLng: number
-  destLat: number
-  destLng: number
   cargo: string
   cargoQty: number
-  status: 'en_transito' | 'pendiente' | 'entregado' | 'retrasado'
+  status: VehicleStatus
   progress: number
   eta: string
   plate: string
+  speed: number
+  distanceKm: number
+  traveledKm: number
+  route: [number, number][]
+  currentPos: [number, number]
+  bearing: number
+  departureTime: string
 }
 
 const SEDES: Sede[] = [
@@ -75,20 +84,17 @@ const SEDES: Sede[] = [
   { id: 5, name: 'Distribuidora Trujillo', city: 'Trujillo', lat: -8.112782, lng: -79.028370, capacity: 3000, manager: 'Luis Vargas Ríos', phone: '+51 44 210 001', stock: 1850, status: 'active' },
 ]
 
-const INITIAL_VEHICLES: Vehicle[] = [
-  { id: 'SHP-001', type: 'truck', driver: 'Carlos Mendoza', plate: 'NK-2024-A', origin: 'Lima', destination: 'Arequipa', originLat: -12.046373, originLng: -77.042754, destLat: -16.409047, destLng: -71.537451, cargo: 'Air Jordan 1 Mid', cargoQty: 150, status: 'en_transito', progress: 65, eta: '2h 30min' },
-  { id: 'SHP-002', type: 'van', driver: 'Ana Quispe', plate: 'NK-1819-B', origin: 'Lima', destination: 'Trujillo', originLat: -12.046373, originLng: -77.042754, destLat: -8.112782, destLng: -79.028370, cargo: 'Nike Pegasus 40', cargoQty: 80, status: 'en_transito', progress: 35, eta: '4h 45min' },
-  { id: 'SHP-003', type: 'truck', driver: 'José Rivas', plate: 'NK-3344-C', origin: 'Arequipa', destination: 'Cusco', originLat: -16.409047, originLng: -71.537451, destLat: -13.531950, destLng: -71.967463, cargo: 'Nike Air Max 90', cargoQty: 200, status: 'pendiente', progress: 0, eta: 'Pendiente' },
-  { id: 'SHP-004', type: 'bike', driver: 'Pedro Solís', plate: 'NK-5566-D', origin: 'Lima', destination: 'Lima Norte', originLat: -12.046373, originLng: -77.042754, destLat: -11.997399, destLng: -77.070756, cargo: 'Nike Dunk Low', cargoQty: 25, status: 'en_transito', progress: 80, eta: '25min' },
-  { id: 'SHP-005', type: 'truck', driver: 'María Flores', plate: 'NK-7788-E', origin: 'Lima', destination: 'Trujillo', originLat: -12.046373, originLng: -77.042754, destLat: -8.112782, destLng: -79.028370, cargo: 'Nike ZoomX Vaporfly', cargoQty: 120, status: 'entregado', progress: 100, eta: 'Entregado' },
-  { id: 'SHP-006', type: 'van', driver: 'Luis Gómez', plate: 'NK-9900-F', origin: 'Arequipa', destination: 'Lima', originLat: -16.409047, originLng: -71.537451, destLat: -12.046373, destLng: -77.042754, cargo: 'Nike Metcon 7', cargoQty: 60, status: 'retrasado', progress: 45, eta: '6h 15min (retraso)' },
-]
+const VEHICLE_SPEEDS: Record<VehicleType, { min: number; max: number }> = {
+  truck: { min: 60, max: 80 },
+  van: { min: 50, max: 70 },
+  bike: { min: 25, max: 40 },
+}
 
-const statusConfig = {
-  en_transito: { label: 'En Tránsito', variant: 'info' as const, color: '#3B82F6' },
-  pendiente: { label: 'Pendiente', variant: 'warning' as const, color: '#FBBF24' },
-  entregado: { label: 'Entregado', variant: 'success' as const, color: '#22C55E' },
-  retrasado: { label: 'Retrasado', variant: 'danger' as const, color: '#EF4444' },
+const statusConfig: Record<VehicleStatus, { label: string; variant: 'info' | 'warning' | 'success' | 'danger'; color: string }> = {
+  en_transito: { label: 'En Tránsito', variant: 'info', color: '#3B82F6' },
+  pendiente: { label: 'Pendiente', variant: 'warning', color: '#FBBF24' },
+  entregado: { label: 'Entregado', variant: 'success', color: '#22C55E' },
+  retrasado: { label: 'Retrasado', variant: 'danger', color: '#EF4444' },
 }
 
 const sedeStatusConfig = {
@@ -103,8 +109,162 @@ const vehicleIconMap = {
   bike: <Bike className="w-4 h-4" />,
 }
 
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLng = ((lng2 - lng1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2)
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+function calculateBearing(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const dLng = ((lng2 - lng1) * Math.PI) / 180
+  const y = Math.sin(dLng) * Math.cos((lat2 * Math.PI) / 180)
+  const x =
+    Math.cos((lat1 * Math.PI) / 180) * Math.sin((lat2 * Math.PI) / 180) -
+    Math.sin((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.cos(dLng)
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360
+}
+
+function buildRoute(waypoints: [number, number][]): { route: [number, number][]; totalDistance: number } {
+  const route: [number, number][] = [waypoints[0]]
+  let totalDistance = 0
+
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const [lat1, lng1] = waypoints[i]
+    const [lat2, lng2] = waypoints[i + 1]
+    const dist = haversineDistance(lat1, lng1, lat2, lng2)
+    totalDistance += dist
+
+    const segments = Math.max(Math.ceil(dist / 5), 1)
+    for (let s = 1; s <= segments; s++) {
+      const t = s / segments
+      route.push([
+        lat1 + (lat2 - lat1) * t,
+        lng1 + (lng2 - lng1) * t,
+      ])
+    }
+  }
+
+  return { route, totalDistance }
+}
+
+function getPositionAlongRoute(route: [number, number][], progress: number): { pos: [number, number]; bearing: number; segmentIndex: number } {
+  if (route.length === 0) return { pos: [0, 0], bearing: 0, segmentIndex: 0 }
+  if (route.length === 1) return { pos: route[0], bearing: 0, segmentIndex: 0 }
+
+  const totalSegments = route.length - 1
+  const targetSegment = (progress / 100) * totalSegments
+  const segmentIndex = Math.min(Math.floor(targetSegment), totalSegments - 1)
+  const segmentT = targetSegment - segmentIndex
+
+  const [lat1, lng1] = route[segmentIndex]
+  const [lat2, lng2] = route[segmentIndex + 1]
+
+  const pos: [number, number] = [
+    lat1 + (lat2 - lat1) * segmentT,
+    lng1 + (lng2 - lng1) * segmentT,
+  ]
+
+  const bearing = calculateBearing(lat1, lng1, lat2, lng2)
+
+  return { pos, bearing, segmentIndex }
+}
+
+const LIMA: [number, number] = [-12.046373, -77.042754]
+const LIMA_NORTE: [number, number] = [-11.997399, -77.070756]
+const AREQUIPA: [number, number] = [-16.409047, -71.537451]
+const CUSCO: [number, number] = [-13.531950, -71.967463]
+const TRUJILLO: [number, number] = [-8.112782, -79.028370]
+
+const LIMA_AREQUIPA_WAYPOINTS: [number, number][] = [
+  LIMA, [-12.5, -77.2], [-13.5, -75.8], [-14.5, -74.5], [-15.5, -73.2], [-16.0, -72.2], AREQUIPA,
+]
+const LIMA_TRUJILLO_WAYPOINTS: [number, number][] = [
+  LIMA, [-11.5, -77.5], [-10.8, -78.2], [-10.0, -78.6], [-9.2, -78.9], TRUJILLO,
+]
+const AREQUIPA_CUSCO_WAYPOINTS: [number, number][] = [
+  AREQUIPA, [-15.8, -71.8], [-14.8, -71.9], [-14.2, -71.95], CUSCO,
+]
+const LIMA_LIMA_NORTE_WAYPOINTS: [number, number][] = [
+  LIMA, [-12.02, -77.05], LIMA_NORTE,
+]
+const AREQUIPA_LIMA_WAYPOINTS: [number, number][] = [
+  AREQUIPA, [-15.5, -73.2], [-14.5, -74.5], [-13.5, -75.8], [-12.5, -77.2], LIMA,
+]
+
+function createVehicleData(
+  id: string,
+  type: VehicleType,
+  driver: string,
+  plate: string,
+  origin: string,
+  destination: string,
+  cargo: string,
+  cargoQty: number,
+  waypoints: [number, number][],
+  initialProgress: number,
+  status: VehicleStatus,
+  departureTime: string,
+): Vehicle {
+  const { route, totalDistance } = buildRoute(waypoints)
+  const { pos, bearing } = getPositionAlongRoute(route, initialProgress)
+  const speedRange = VEHICLE_SPEEDS[type]
+  const baseSpeed = (speedRange.min + speedRange.max) / 2
+  const traveledKm = (totalDistance * initialProgress) / 100
+  const remainingKm = totalDistance - traveledKm
+  const remainingHours = remainingKm / baseSpeed
+  const remainingMin = Math.round(remainingHours * 60)
+
+  let eta: string
+  if (status === 'entregado') {
+    eta = 'Entregado'
+  } else if (status === 'pendiente') {
+    eta = 'Pendiente'
+  } else if (remainingMin > 60) {
+    eta = `${Math.floor(remainingMin / 60)}h ${remainingMin % 60}min`
+  } else {
+    eta = `${remainingMin}min`
+  }
+
+  return {
+    id,
+    type,
+    driver,
+    origin,
+    destination,
+    cargo,
+    cargoQty,
+    status,
+    progress: initialProgress,
+    eta,
+    plate,
+    speed: status === 'en_transito' ? baseSpeed : 0,
+    distanceKm: totalDistance,
+    traveledKm,
+    route,
+    currentPos: pos,
+    bearing,
+    departureTime,
+  }
+}
+
+const INITIAL_VEHICLES: Vehicle[] = [
+  createVehicleData('SHP-001', 'truck', 'Carlos Mendoza', 'NK-2024-A', 'Lima', 'Arequipa', 'Air Jordan 1 Mid', 150, LIMA_AREQUIPA_WAYPOINTS, 65, 'en_transito', '08:30'),
+  createVehicleData('SHP-002', 'van', 'Ana Quispe', 'NK-1819-B', 'Lima', 'Trujillo', 'Nike Pegasus 40', 80, LIMA_TRUJILLO_WAYPOINTS, 35, 'en_transito', '09:15'),
+  createVehicleData('SHP-003', 'truck', 'José Rivas', 'NK-3344-C', 'Arequipa', 'Cusco', 'Nike Air Max 90', 200, AREQUIPA_CUSCO_WAYPOINTS, 0, 'pendiente', '14:00'),
+  createVehicleData('SHP-004', 'bike', 'Pedro Solís', 'NK-5566-D', 'Lima', 'Lima Norte', 'Nike Dunk Low', 25, LIMA_LIMA_NORTE_WAYPOINTS, 80, 'en_transito', '10:45'),
+  createVehicleData('SHP-005', 'truck', 'María Flores', 'NK-7788-E', 'Lima', 'Trujillo', 'Nike ZoomX Vaporfly', 120, LIMA_TRUJILLO_WAYPOINTS, 100, 'entregado', '06:00'),
+  createVehicleData('SHP-006', 'van', 'Luis Gómez', 'NK-9900-F', 'Arequipa', 'Lima', 'Nike Metcon 7', 60, AREQUIPA_LIMA_WAYPOINTS, 45, 'retrasado', '07:30'),
+  createVehicleData('SHP-007', 'truck', 'Rosa Díaz', 'NK-1122-G', 'Lima', 'Cusco', 'Nike Blazer Mid', 90, [...LIMA_AREQUIPA_WAYPOINTS.slice(0, -1), ...AREQUIPA_CUSCO_WAYPOINTS], 20, 'en_transito', '11:00'),
+  createVehicleData('SHP-008', 'van', 'Miguel Torres', 'NK-3344-H', 'Trujillo', 'Lima', 'Nike Air Force 1', 70, [...LIMA_TRUJILLO_WAYPOINTS].reverse(), 50, 'en_transito', '09:30'),
+]
+
 function createSedeIcon(color: string, status: string) {
-  const pulseClass = status !== 'critical' ? '' : 'animate-pulse'
+  const pulseClass = status === 'critical' ? 'animate-pulse' : ''
   return L.divIcon({
     className: 'custom-sede-marker',
     html: `
@@ -118,7 +278,7 @@ function createSedeIcon(color: string, status: string) {
   })
 }
 
-function createVehicleIcon(color: string, type: string) {
+function createVehicleIcon(color: string, type: string, bearing: number) {
   const icons: Record<string, string> = {
     truck: '🚚',
     van: '🚐',
@@ -127,7 +287,7 @@ function createVehicleIcon(color: string, type: string) {
   return L.divIcon({
     className: 'custom-vehicle-marker',
     html: `
-      <div style="position: relative; width: 36px; height: 36px;">
+      <div style="position: relative; width: 36px; height: 36px; transform: rotate(${bearing}deg);">
         <div style="position: absolute; inset: -4px; border-radius: 50%; background: ${color}; opacity: 0.15; animation: pulse 2s infinite;"></div>
         <div style="position: absolute; inset: 0; border-radius: 50%; background: ${color}; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
           ${icons[type] || '📦'}
@@ -137,16 +297,6 @@ function createVehicleIcon(color: string, type: string) {
     iconSize: [36, 36],
     iconAnchor: [18, 18],
   })
-}
-
-function interpolatePosition(
-  originLat: number, originLng: number,
-  destLat: number, destLng: number,
-  progress: number,
-): [number, number] {
-  const lat = originLat + (destLat - originLat) * (progress / 100)
-  const lng = originLng + (destLng - originLng) * (progress / 100)
-  return [lat, lng]
 }
 
 function AutoFit({ sedes }: { sedes: Sede[] }) {
@@ -163,6 +313,7 @@ export const TrackingPage: React.FC = () => {
   const [selectedSede, setSelectedSede] = useState<Sede | null>(null)
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
   const [filter, setFilter] = useState<string>('all')
+  const updateCountRef = useRef(0)
 
   useEffect(() => {
     const style = document.createElement('style')
@@ -184,21 +335,50 @@ export const TrackingPage: React.FC = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
+      updateCountRef.current += 1
       setVehicles((prev) =>
         prev.map((v) => {
           if (v.status === 'entregado' || v.status === 'pendiente') return v
-          const increment = v.type === 'bike' ? 2 : v.type === 'van' ? 1.5 : 1
-          const newProgress = Math.min(v.progress + increment, 100)
+
+          const speedRange = VEHICLE_SPEEDS[v.type]
+          const speedVariation = speedRange.min + Math.random() * (speedRange.max - speedRange.min)
+          const isRetrasado = v.status === 'retrasado'
+          const effectiveSpeed = isRetrasado ? speedVariation * 0.4 : speedVariation
+
+          const distancePerTick = (effectiveSpeed * 3) / 3600
+          const progressIncrement = (distancePerTick / v.distanceKm) * 100
+          const newProgress = Math.min(v.progress + progressIncrement, 100)
+
           if (newProgress >= 100) {
-            return { ...v, progress: 100, status: 'entregado' as const, eta: 'Entregado' }
+            return {
+              ...v,
+              progress: 100,
+              status: 'entregado' as const,
+              eta: 'Entregado',
+              speed: 0,
+              traveledKm: v.distanceKm,
+              currentPos: v.route[v.route.length - 1],
+            }
           }
-          const remainingMin = Math.round(((100 - newProgress) / 100) * 300)
+
+          const { pos, bearing } = getPositionAlongRoute(v.route, newProgress)
+          const newTraveledKm = (v.distanceKm * newProgress) / 100
+          const remainingKm = v.distanceKm - newTraveledKm
+          const remainingHours = remainingKm / effectiveSpeed
+          const remainingMin = Math.round(remainingHours * 60)
+
+          const eta = remainingMin > 60
+            ? `${Math.floor(remainingMin / 60)}h ${remainingMin % 60}min`
+            : `${remainingMin}min`
+
           return {
             ...v,
             progress: newProgress,
-            eta: remainingMin > 60
-              ? `${Math.floor(remainingMin / 60)}h ${remainingMin % 60}min`
-              : `${remainingMin}min`,
+            currentPos: pos,
+            bearing,
+            speed: Math.round(effectiveSpeed),
+            traveledKm: newTraveledKm,
+            eta: isRetrasado ? `${eta} (retraso)` : eta,
           }
         }),
       )
@@ -215,7 +395,14 @@ export const TrackingPage: React.FC = () => {
     enTransito: vehicles.filter((v) => v.status === 'en_transito').length,
     entregados: vehicles.filter((v) => v.status === 'entregado').length,
     retrasados: vehicles.filter((v) => v.status === 'retrasado').length,
+    pendientes: vehicles.filter((v) => v.status === 'pendiente').length,
   }
+
+  const totalDistance = vehicles.reduce((sum, v) => sum + v.distanceKm, 0)
+  const totalTraveled = vehicles.reduce((sum, v) => sum + v.traveledKm, 0)
+  const avgSpeed = vehicles
+    .filter((v) => v.status === 'en_transito')
+    .reduce((sum, v, _, arr) => sum + v.speed / arr.length, 0)
 
   return (
     <div className="space-y-6">
@@ -237,6 +424,37 @@ export const TrackingPage: React.FC = () => {
             </div>
           </Card>
         ))}
+      </div>
+
+      {/* Distance & speed overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-white/40 uppercase tracking-wider font-semibold">Distancia Total</p>
+              <p className="text-2xl font-bold mt-1 text-white/90">{totalDistance.toFixed(0)} km</p>
+            </div>
+            <div className="p-2.5 rounded-2xl bg-white/5"><RouteIcon className="w-5 h-5 text-nikeOrange" /></div>
+          </div>
+        </Card>
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-white/40 uppercase tracking-wider font-semibold">Recorrido</p>
+              <p className="text-2xl font-bold mt-1 text-green-400">{totalTraveled.toFixed(0)} km</p>
+            </div>
+            <div className="p-2.5 rounded-2xl bg-white/5"><Activity className="w-5 h-5 text-green-400" /></div>
+          </div>
+        </Card>
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-white/40 uppercase tracking-wider font-semibold">Velocidad Promedio</p>
+              <p className="text-2xl font-bold mt-1 text-blue-400">{Math.round(avgSpeed)} km/h</p>
+            </div>
+            <div className="p-2.5 rounded-2xl bg-white/5"><Gauge className="w-5 h-5 text-blue-400" /></div>
+          </div>
+        </Card>
       </div>
 
       {/* Map + Sede details */}
@@ -261,23 +479,38 @@ export const TrackingPage: React.FC = () => {
 
                 <AutoFit sedes={SEDES} />
 
-                {/* Route polylines */}
+                {/* Full route polylines (faded) */}
+                {vehicles
+                  .filter((v) => v.status === 'en_transito' || v.status === 'retrasado')
+                  .map((v) => (
+                    <Polyline
+                      key={`route-full-${v.id}`}
+                      positions={v.route}
+                      pathOptions={{
+                        color: statusConfig[v.status].color,
+                        weight: 2,
+                        opacity: 0.2,
+                        dashArray: '5, 8',
+                      }}
+                    />
+                  ))}
+
+                {/* Traveled path polylines (solid) */}
                 {vehicles
                   .filter((v) => v.status === 'en_transito' || v.status === 'retrasado')
                   .map((v) => {
-                    const positions: [number, number][] = [
-                      [v.originLat, v.originLng],
-                      [v.destLat, v.destLng],
-                    ]
+                    const { segmentIndex } = getPositionAlongRoute(v.route, v.progress)
+                    const traveledPath = v.route.slice(0, segmentIndex + 1)
+                    const { pos } = getPositionAlongRoute(v.route, v.progress)
+                    traveledPath.push(pos)
                     return (
                       <Polyline
-                        key={`route-${v.id}`}
-                        positions={positions}
+                        key={`route-traveled-${v.id}`}
+                        positions={traveledPath}
                         pathOptions={{
                           color: statusConfig[v.status].color,
-                          weight: 2,
-                          opacity: 0.5,
-                          dashArray: '6, 6',
+                          weight: 3,
+                          opacity: 0.8,
                         }}
                       />
                     )
@@ -322,36 +555,31 @@ export const TrackingPage: React.FC = () => {
                 {/* Vehicle markers (animated) */}
                 {vehicles
                   .filter((v) => v.status === 'en_transito' || v.status === 'retrasado')
-                  .map((v) => {
-                    const pos = interpolatePosition(
-                      v.originLat, v.originLng,
-                      v.destLat, v.destLng,
-                      v.progress,
-                    )
-                    return (
-                      <Marker
-                        key={`vehicle-${v.id}`}
-                        position={pos}
-                        icon={createVehicleIcon(statusConfig[v.status].color, v.type)}
-                        zIndexOffset={1000}
-                      >
-                        <Popup>
-                          <div style={{ minWidth: '160px' }}>
-                            <strong>{v.id}</strong> — {v.plate}
-                            <br />
-                            <span style={{ color: '#999', fontSize: '12px' }}>{v.origin} → {v.destination}</span>
-                            <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '8px 0' }} />
-                            <div style={{ fontSize: '12px' }}>
-                              <div>👤 {v.driver}</div>
-                              <div>📦 {v.cargo} ({v.cargoQty} u.)</div>
-                              <div>⏱️ ETA: {v.eta}</div>
-                              <div>📊 Progreso: {Math.round(v.progress)}%</div>
-                            </div>
+                  .map((v) => (
+                    <Marker
+                      key={`vehicle-${v.id}`}
+                      position={v.currentPos}
+                      icon={createVehicleIcon(statusConfig[v.status].color, v.type, v.bearing)}
+                      zIndexOffset={1000}
+                    >
+                      <Popup>
+                        <div style={{ minWidth: '180px' }}>
+                          <strong>{v.id}</strong> — {v.plate}
+                          <br />
+                          <span style={{ color: '#999', fontSize: '12px' }}>{v.origin} → {v.destination}</span>
+                          <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '8px 0' }} />
+                          <div style={{ fontSize: '12px' }}>
+                            <div>👤 {v.driver}</div>
+                            <div>📦 {v.cargo} ({v.cargoQty} u.)</div>
+                            <div>⏱️ ETA: {v.eta}</div>
+                            <div>📊 Progreso: {Math.round(v.progress)}%</div>
+                            <div>🛣️ {v.traveledKm.toFixed(1)}/{v.distanceKm.toFixed(0)} km</div>
+                            <div>⚡ {v.speed} km/h</div>
                           </div>
-                        </Popup>
-                      </Marker>
-                    )
-                  })}
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ))}
               </MapContainer>
             </div>
 
@@ -417,23 +645,15 @@ export const TrackingPage: React.FC = () => {
                     <span>Utilización</span>
                     <span>{Math.round((selectedSede.stock / selectedSede.capacity) * 100)}%</span>
                   </div>
-                  <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{
-                        width: `${(selectedSede.stock / selectedSede.capacity) * 100}%`,
-                        background: sedeStatusConfig[selectedSede.status].color,
-                      }}
-                    />
-                  </div>
+                  <Progress
+                    value={(selectedSede.stock / selectedSede.capacity) * 100}
+                    indicatorClassName=""
+                  />
                 </div>
 
-                <button
-                  onClick={() => setSelectedSede(null)}
-                  className="text-xs text-nikeOrange hover:text-white transition-colors uppercase font-bold tracking-wider"
-                >
+                <Button variant="ghost" size="sm" onClick={() => setSelectedSede(null)}>
                   ← Volver
-                </button>
+                </Button>
               </div>
             ) : (
               <div className="space-y-3">
@@ -470,29 +690,17 @@ export const TrackingPage: React.FC = () => {
         title="Vehículos y Envíos"
         icon={<Truck className="w-5 h-5 text-nikeOrange" />}
       >
-        <div className="flex flex-wrap gap-2 mb-4">
-          {[
-            { key: 'all', label: 'Todos' },
-            { key: 'en_transito', label: 'En Tránsito' },
-            { key: 'pendiente', label: 'Pendiente' },
-            { key: 'entregado', label: 'Entregado' },
-            { key: 'retrasado', label: 'Retrasado' },
-          ].map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all ${
-                filter === f.key
-                  ? 'bg-nikeOrange text-white'
-                  : 'bg-white/5 text-white/50 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        <Tabs defaultValue="all" onValueChange={setFilter}>
+          <TabsList>
+            <TabsTrigger value="all">Todos ({stats.total})</TabsTrigger>
+            <TabsTrigger value="en_transito">Tránsito ({stats.enTransito})</TabsTrigger>
+            <TabsTrigger value="pendiente">Pendiente ({stats.pendientes})</TabsTrigger>
+            <TabsTrigger value="entregado">Entregado ({stats.entregados})</TabsTrigger>
+            <TabsTrigger value="retrasado">Retrasado ({stats.retrasados})</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
-        <div className="space-y-3">
+        <div className="space-y-3 mt-4">
           <AnimatePresence>
             {filteredVehicles.map((vehicle) => {
               const status = statusConfig[vehicle.status]
@@ -531,14 +739,10 @@ export const TrackingPage: React.FC = () => {
                   </div>
 
                   <div className="mb-3">
-                    <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                      <motion.div
-                        className="h-full rounded-full"
-                        style={{ background: status.color }}
-                        animate={{ width: `${vehicle.progress}%` }}
-                        transition={{ duration: 0.5 }}
-                      />
-                    </div>
+                    <Progress
+                      value={vehicle.progress}
+                      indicatorClassName=""
+                    />
                   </div>
 
                   <div className="flex items-center gap-4 text-xs text-white/40">
@@ -551,6 +755,14 @@ export const TrackingPage: React.FC = () => {
                     <span className="flex items-center gap-1">
                       <Activity className="w-3 h-3" /> {Math.round(vehicle.progress)}%
                     </span>
+                    <span className="flex items-center gap-1">
+                      <RouteIcon className="w-3 h-3" /> {vehicle.traveledKm.toFixed(0)}/{vehicle.distanceKm.toFixed(0)} km
+                    </span>
+                    {vehicle.speed > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Gauge className="w-3 h-3" /> {vehicle.speed} km/h
+                      </span>
+                    )}
                   </div>
                 </motion.div>
               )
@@ -599,8 +811,8 @@ export const TrackingPage: React.FC = () => {
                     <p className="text-sm font-semibold text-white/90">{selectedVehicle.driver}</p>
                   </div>
                   <div className="p-3 rounded-xl bg-white/5">
-                    <p className="text-xs text-white/40 uppercase tracking-wider">ETA</p>
-                    <p className="text-sm font-semibold text-white/90">{selectedVehicle.eta}</p>
+                    <p className="text-xs text-white/40 uppercase tracking-wider">Salida</p>
+                    <p className="text-sm font-semibold text-white/90">{selectedVehicle.departureTime}</p>
                   </div>
                 </div>
 
@@ -611,10 +823,25 @@ export const TrackingPage: React.FC = () => {
                   </p>
                 </div>
 
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-3 rounded-xl bg-white/5 text-center">
+                    <p className="text-xs text-white/40 uppercase tracking-wider">ETA</p>
+                    <p className="text-sm font-semibold text-white/90">{selectedVehicle.eta}</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white/5 text-center">
+                    <p className="text-xs text-white/40 uppercase tracking-wider">Distancia</p>
+                    <p className="text-sm font-semibold text-white/90">{selectedVehicle.distanceKm.toFixed(0)} km</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white/5 text-center">
+                    <p className="text-xs text-white/40 uppercase tracking-wider">Velocidad</p>
+                    <p className="text-sm font-semibold text-white/90">{selectedVehicle.speed} km/h</p>
+                  </div>
+                </div>
+
                 <div>
                   <div className="flex justify-between text-xs text-white/40 mb-1">
-                    <span>Progreso</span>
-                    <span>{Math.round(selectedVehicle.progress)}%</span>
+                    <span>Progreso del viaje</span>
+                    <span>{Math.round(selectedVehicle.progress)}% — {selectedVehicle.traveledKm.toFixed(1)} km recorridos</span>
                   </div>
                   <Progress
                     value={selectedVehicle.progress}

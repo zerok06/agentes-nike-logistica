@@ -8,6 +8,7 @@ interface HeaderProps {
   onMenuClick: () => void
   wsConnected: boolean
   wsFallback: boolean
+  isMobile: boolean
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -15,6 +16,7 @@ export const Header: React.FC<HeaderProps> = ({
   onMenuClick,
   wsConnected,
   wsFallback,
+  isMobile,
 }) => {
   const { user } = useAuthStore()
 
@@ -28,12 +30,14 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="sticky top-0 z-30 glass-panel border-b border-white/5 px-4 md:px-6 h-20 flex items-center justify-between gap-4">
       <div className="flex items-center gap-4">
-        <button
-          onClick={onMenuClick}
-          className="lg:hidden p-2 rounded-xl hover:bg-white/5 text-white/60"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
+        {isMobile && (
+          <button
+            onClick={onMenuClick}
+            className="p-2 rounded-xl hover:bg-white/5 text-white/60"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
         <h1 className="text-lg md:text-xl font-bold tracking-tight text-white/95 capitalize">
           {title}
         </h1>

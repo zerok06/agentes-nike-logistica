@@ -3,6 +3,7 @@ import { useLocation } from '@tanstack/react-router'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { useWebSocket } from '../../hooks/useWebSocket'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { inventoryService } from '../../services/inventory.service'
 
 interface DashboardLayoutProps {
@@ -20,6 +21,7 @@ const pageTitleMap: Record<string, string> = {
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+  const isMobile = useIsMobile()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
@@ -33,6 +35,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     onMessage: () => {},
     onFallbackTriggered: () => {
       const interval = setInterval(() => {
+        const token = localStorage.getItem('access_token')
+        if (!token) {
+          clearInterval(interval)
+          return
+        }
         inventoryService.getStock().catch(() => {})
       }, 10000)
       return () => clearInterval(interval)
@@ -48,6 +55,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
         setCollapsed={setCollapsed}
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
+        isMobile={isMobile}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -56,6 +64,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           onMenuClick={() => setMobileOpen(true)}
           wsConnected={isConnected}
           wsFallback={fallbackToPolling}
+          isMobile={isMobile}
         />
 
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-x-hidden">
