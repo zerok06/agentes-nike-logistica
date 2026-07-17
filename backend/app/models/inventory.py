@@ -45,6 +45,7 @@ class Product(Base):
     organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("nike_logistica.organizations.organization_id", ondelete="CASCADE"), nullable=False)
     category_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("nike_logistica.categories.category_id"))
     sku: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    barcode: Mapped[str | None] = mapped_column(String(50), unique=True)
     product_name: Mapped[str] = mapped_column(String(150), nullable=False)
     model: Mapped[str | None] = mapped_column(String(100))
     gender: Mapped[str | None] = mapped_column(String(20), default="Unisex")

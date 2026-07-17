@@ -12,6 +12,10 @@ import { DashboardPage } from './pages/dashboard/DashboardPage'
 import { InventoryPage } from './pages/dashboard/InventoryPage'
 import { TrackingPage } from './pages/dashboard/TrackingPage'
 import { ChatbotPage } from './pages/dashboard/ChatbotPage'
+import { ProductRegistrationPage } from './pages/dashboard/ProductRegistrationPage'
+import { ProductsPage } from './pages/dashboard/ProductsPage'
+import { ProductDetailPage } from './pages/dashboard/ProductDetailPage'
+import { ProductEditPage } from './pages/dashboard/ProductEditPage'
 import { AuditPage } from './pages/dashboard/AuditPage'
 import { UsersPage } from './pages/dashboard/UsersPage'
 import { SettingsPage } from './pages/dashboard/SettingsPage'
@@ -102,6 +106,30 @@ const chatbotRoute = createRoute({
   component: ChatbotPage,
 })
 
+const productsRoute = createRoute({
+  getParentRoute: () => dashboardLayoutRoute,
+  path: '/products',
+  component: ProductRegistrationPage,
+})
+
+const productsListRoute = createRoute({
+  getParentRoute: () => dashboardLayoutRoute,
+  path: '/products/list',
+  component: ProductsPage,
+})
+
+const productDetailRoute = createRoute({
+  getParentRoute: () => dashboardLayoutRoute,
+  path: '/products/$id',
+  component: ProductDetailPage,
+})
+
+const productEditRoute = createRoute({
+  getParentRoute: () => dashboardLayoutRoute,
+  path: '/products/$id/edit',
+  component: ProductEditPage,
+})
+
 const auditRoute = createRoute({
   getParentRoute: () => dashboardLayoutRoute,
   path: '/audit',
@@ -134,6 +162,10 @@ const routeTree = rootRoute.addChildren([
     dashboardRoute,
     inventoryRoute,
     trackingRoute,
+    productsRoute,
+    productsListRoute,
+    productDetailRoute,
+    productEditRoute,
     chatbotRoute,
     auditRoute,
     usersRoute,

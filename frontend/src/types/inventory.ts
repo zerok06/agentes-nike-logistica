@@ -36,6 +36,21 @@ export interface ChatMessage {
   timestamp: Date
 }
 
+export interface ProductResponse {
+  product_id: number
+  sku: string
+  barcode: string | null
+  product_name: string
+  model: string | null
+  gender: string | null
+  size: string | null
+  color: string | null
+  unit_price: number
+  description: string | null
+  warehouse_id: number
+  stock_qty: number
+}
+
 export interface BarcodeResult {
   sku: string
   product_name: string

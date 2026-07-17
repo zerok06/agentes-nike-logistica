@@ -19,7 +19,15 @@ PUBLIC_PATHS = {
     "/api/v1/auth/login",
     "/api/v1/auth/register",
     "/api/v1/auth/refresh",
+    "/api/v1/ws/stock",
 }
+
+
+def _cors_headers(request: Request) -> dict[str, str]:
+    origin = request.headers.get("origin", "")
+    if origin in settings.cors_origins_list:
+        return {"Access-Control-Allow-Origin": origin}
+    return {}
 
 
 def _user_from_jwt(payload: dict) -> AuthenticatedUser | None:
@@ -63,14 +71,14 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 return JSONResponse(
                     status_code=401,
                     content={"detail": "Token de acceso inválido o expirado"},
-                    headers={"WWW-Authenticate": "Bearer"},
+                    headers={"WWW-Authenticate": "Bearer", **_cors_headers(request)},
                 )
             user = _user_from_jwt(payload)
             if user is None:
                 return JSONResponse(
                     status_code=401,
                     content={"detail": "Token malformado"},
-                    headers={"WWW-Authenticate": "Bearer"},
+                    headers={"WWW-Authenticate": "Bearer", **_cors_headers(request)},
                 )
             request.state.user = user
             return await call_next(request)
@@ -86,7 +94,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                         "o la cabecera de demo."
                     )
                 },
-                headers={"WWW-Authenticate": "Bearer"},
+                headers={"WWW-Authenticate": "Bearer", **_cors_headers(request)},
             )
         try:
             request.state.user = create_demo_user(demo_role)
@@ -94,5 +102,6 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=401,
                 content={"detail": str(exc)},
+                headers=_cors_headers(request),
             )
         return await call_next(request)

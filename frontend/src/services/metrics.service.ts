@@ -10,9 +10,24 @@ import type {
   StockByWarehouse,
 } from '../types/metrics'
 
+interface FilterParams {
+  days?: number
+  warehouse_id?: number | null
+  category?: string | null
+}
+
+function buildParams(opts?: FilterParams): string {
+  const params = new URLSearchParams()
+  if (opts?.days) params.set('days', String(opts.days))
+  if (opts?.warehouse_id) params.set('warehouse_id', String(opts.warehouse_id))
+  if (opts?.category) params.set('category', opts.category)
+  const qs = params.toString()
+  return qs ? `?${qs}` : ''
+}
+
 export const metricsService = {
-  async getSummary(): Promise<MetricsSummary> {
-    const res = await api.get<MetricsSummary>('/metrics/summary')
+  async getSummary(days?: number, warehouse_id?: number | null, category?: string | null): Promise<MetricsSummary> {
+    const res = await api.get<MetricsSummary>(`/metrics/summary${buildParams({ days, warehouse_id, category })}`)
     return res.data
   },
 
@@ -46,8 +61,8 @@ export const metricsService = {
     return res.data
   },
 
-  async getStockByWarehouse(): Promise<StockByWarehouse[]> {
-    const res = await api.get<StockByWarehouse[]>('/metrics/stock-by-warehouse')
+  async getStockByWarehouse(warehouse_id?: number | null): Promise<StockByWarehouse[]> {
+    const res = await api.get<StockByWarehouse[]>(`/metrics/stock-by-warehouse${buildParams({ warehouse_id })}`)
     return res.data
   },
 

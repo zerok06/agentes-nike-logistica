@@ -17,12 +17,18 @@ class MetricsService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_summary(self) -> dict:
+    async def get_summary(self, warehouse_id: int | None = None, category: str | None = None) -> dict:
         total_stock = 0
         critical_count = 0
         total_value = 0.0
         total_products = 0
         total_warehouses = 0
+
+        base_filters = []
+        if warehouse_id:
+            base_filters.append(Inventory.warehouse_id == warehouse_id)
+        if category:
+            base_filters.append(Category.name == category)
 
         result = await self.session.execute(
             select(
@@ -33,11 +39,16 @@ class MetricsService:
         row = result.first()
         total_stock = int(row.total_stock or 0)
 
-        result = await self.session.execute(
+        query = (
             select(Inventory, Product)
             .join(Product, Inventory.product_id == Product.product_id)
             .options(selectinload(Inventory.warehouse))
         )
+        if category:
+            query = query.join(Product.category)
+        if base_filters:
+            query = query.where(and_(*base_filters))
+        result = await self.session.execute(query)
         inventories = result.all()
         for inv, prod in inventories:
             if inv.stock_qty < inv.min_stock:
@@ -393,7 +404,10 @@ class MetricsService:
             "routes": routes,
         }
 
-    async def get_stock_by_warehouse(self) -> list[dict]:
+    async def get_stock_by_warehouse(self, warehouse_id: int | None = None) -> list[dict]:
+        filters = []
+        if warehouse_id:
+            filters.append(Inventory.warehouse_id == warehouse_id)
         result = await self.session.execute(
             select(
                 Warehouse.warehouse_name,
@@ -403,6 +417,7 @@ class MetricsService:
                 func.sum(case((Inventory.stock_qty >= Inventory.min_stock, 1), else_=0)).label("normal"),
             )
             .join(Inventory, Inventory.warehouse_id == Warehouse.warehouse_id)
+            .where(and_(*filters) if filters else True)
             .group_by(Warehouse.warehouse_id, Warehouse.warehouse_name, Warehouse.city)
             .order_by(func.sum(Inventory.stock_qty).desc())
         )

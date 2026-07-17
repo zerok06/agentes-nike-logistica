@@ -8,6 +8,7 @@ from app.core.database import get_central_db
 from app.services.metrics_service import MetricsService
 from app.api.deps.auth import require_roles
 from app.schemas.auth import AuthenticatedUser, UserRole
+from app.models.inventory import Warehouse, Category
 
 router = APIRouter(
     prefix="/metrics",
@@ -17,13 +18,16 @@ router = APIRouter(
 
 @router.get("/summary")
 async def get_metrics_summary(
+    days: int = Query(7, ge=1, le=90),
+    warehouse_id: int | None = Query(None),
+    category: str | None = Query(None),
     db: AsyncSession = Depends(get_central_db),
     current_user: AuthenticatedUser = Depends(
         require_roles(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR)
     ),
 ) -> dict:
     service = MetricsService(db)
-    return await service.get_summary()
+    return await service.get_summary(warehouse_id=warehouse_id, category=category)
 
 
 @router.get("/warehouse-performance")
@@ -96,13 +100,42 @@ async def get_shipment_stats(
 
 @router.get("/stock-by-warehouse")
 async def get_stock_by_warehouse(
+    warehouse_id: int | None = Query(None),
     db: AsyncSession = Depends(get_central_db),
     current_user: AuthenticatedUser = Depends(
         require_roles(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR)
     ),
 ) -> list[dict]:
     service = MetricsService(db)
-    return await service.get_stock_by_warehouse()
+    return await service.get_stock_by_warehouse(warehouse_id=warehouse_id)
+
+
+@router.get("/warehouses")
+async def list_warehouses(
+    db: AsyncSession = Depends(get_central_db),
+    current_user: AuthenticatedUser = Depends(
+        require_roles(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR)
+    ),
+) -> list[dict]:
+    result = await db.execute(
+        select(Warehouse.warehouse_id, Warehouse.warehouse_name, Warehouse.city)
+        .order_by(Warehouse.warehouse_name)
+    )
+    return [{"id": r.warehouse_id, "name": r.warehouse_name, "city": r.city} for r in result.all()]
+
+
+@router.get("/categories")
+async def list_categories(
+    db: AsyncSession = Depends(get_central_db),
+    current_user: AuthenticatedUser = Depends(
+        require_roles(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR)
+    ),
+) -> list[dict]:
+    result = await db.execute(
+        select(Category.category_id, Category.name)
+        .order_by(Category.name)
+    )
+    return [{"id": r.category_id, "name": r.name} for r in result.all()]
 
 
 @router.get("/export/csv")

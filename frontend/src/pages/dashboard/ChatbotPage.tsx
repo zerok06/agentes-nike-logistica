@@ -99,7 +99,7 @@ export const ChatbotPage: React.FC = () => {
                     Asistente Logístico RAG
                   </h2>
                   <p className="text-[10px] sm:text-xs text-white/40 hidden sm:block">
-                    Powered by pgvector & DeepSeek
+                    Powered by pgvector & Groq
                   </p>
                 </div>
               </div>
@@ -145,7 +145,7 @@ export const ChatbotPage: React.FC = () => {
                   <div className="bg-white/5 border border-white/5 rounded-2xl rounded-tl-none p-3 flex items-center gap-2">
                     <Loader2 className="w-4 h-4 text-nikeOrange animate-spin" />
                     <span className="text-xs text-white/40">
-                      Buscando en pgvector & consultando DeepSeek...
+                      Buscando en pgvector & consultando Groq...
                     </span>
                   </div>
                 </div>

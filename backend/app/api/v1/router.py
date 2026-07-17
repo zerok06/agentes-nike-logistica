@@ -5,6 +5,7 @@ from app.api.v1.routes.system import router as system_router
 from app.api.v1.routes.chat import router as chat_router
 from app.api.v1.routes.stock import router as stock_router
 from app.api.v1.routes.metrics import router as metrics_router
+from app.api.v1.routes.products import router as products_router
 
 api_router = APIRouter()
 
@@ -14,3 +15,4 @@ api_router.include_router(system_router)
 api_router.include_router(chat_router)
 api_router.include_router(stock_router)
 api_router.include_router(metrics_router)
+api_router.include_router(products_router)

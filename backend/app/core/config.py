@@ -37,11 +37,6 @@ class Settings(BaseSettings):
     groq_max_tokens: int = 2048
     groq_temperature: float = 0.3
 
-    # Huawei ModelArts MAAS (legacy, no usado por defecto)
-    huawei_api_key: str = ""
-    huawei_base_url: str = "https://api-ap-southeast-1.modelarts-maas.com/openai/v1"
-    huawei_model: str = "deepseek-v3.2"
-
     model_config = SettingsConfigDict(
         env_file=ROOT_DIR / ".env",
         env_file_encoding="utf-8",
