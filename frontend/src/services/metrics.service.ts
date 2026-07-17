@@ -36,8 +36,8 @@ export const metricsService = {
     return res.data
   },
 
-  async getTrends(days: number = 7): Promise<MovementTrend[]> {
-    const res = await api.get<MovementTrend[]>(`/metrics/trends?days=${days}`)
+  async getTrends(days: number = 7, warehouse_id?: number | null): Promise<MovementTrend[]> {
+    const res = await api.get<MovementTrend[]>(`/metrics/trends${buildParams({ days, warehouse_id })}`)
     return res.data
   },
 
@@ -51,13 +51,13 @@ export const metricsService = {
     return res.data
   },
 
-  async getAlerts(): Promise<Alert[]> {
-    const res = await api.get<Alert[]>('/metrics/alerts')
+  async getAlerts(warehouse_id?: number | null): Promise<Alert[]> {
+    const res = await api.get<Alert[]>(`/metrics/alerts${buildParams({ warehouse_id })}`)
     return res.data
   },
 
-  async getShipmentStats(): Promise<ShipmentStats> {
-    const res = await api.get<ShipmentStats>('/metrics/shipments')
+  async getShipmentStats(warehouse_id?: number | null): Promise<ShipmentStats> {
+    const res = await api.get<ShipmentStats>(`/metrics/shipments${buildParams({ warehouse_id })}`)
     return res.data
   },
 

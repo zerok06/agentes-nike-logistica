@@ -47,50 +47,60 @@ const DashboardContent: React.FC = () => {
       variants={containerVariants}
       initial={false}
       animate="visible"
-      className="space-y-4 lg:space-y-6"
+      className="space-y-6 lg:space-y-8"
     >
+      {/* Cabecera del Dashboard */}
       <motion.div
         variants={sectionVariants}
-        className="flex items-center justify-between"
+        className="flex items-center justify-between border-b border-white/10 pb-5"
       >
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-white">Dashboard Ejecutivo</h1>
-          <p className="text-sm text-white/40 mt-1">Métricas estratégicas de inventario y logística</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse shadow-[0_0_10px_#f97316]" />
+            <span className="text-xs font-bold tracking-widest text-orange-400 uppercase">Centro de Inteligencia Logística</span>
+          </div>
+          <h1 className="text-2xl lg:text-3xl font-extrabold text-white">Dashboard</h1>
+          <p className="text-sm text-slate-400 mt-1">Métricas estratégicas de inventario, flujos y control operativo en tiempo real</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 text-[10px] text-white/30">
-            <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
+          <div className="hidden sm:flex items-center gap-2 text-[10px] text-white/40 font-mono">
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-orange-400' : ''}`} />
             {nextRefresh > 0 ? `${nextRefresh}s` : 'refrescando...'}
           </div>
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all disabled:opacity-50"
+            className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all disabled:opacity-50 border border-white/10"
           >
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </motion.div>
 
+      {/* Barra de Filtros */}
       <motion.div variants={sectionVariants}>
         <DashboardFilterBar refreshing={refreshing} onRefresh={handleRefresh} nextRefresh={nextRefresh} />
       </motion.div>
 
+      {/* Tarjetas KPI Superiores */}
       <motion.div variants={sectionVariants} key={`kpi-${refreshing}`}>
         <KpiGrid />
       </motion.div>
 
-      <motion.div
-        variants={sectionVariants}
-        className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6"
-      >
+      {/* Fila 1: Gráfico de Tendencia (TrendChart) en ancho completo o adaptado */}
+      <motion.div variants={sectionVariants}>
         <TrendChart />
+      </motion.div>
+
+      {/* Fila 2: Nuestro nuevo StockChart interactivo (Ocupa todo el ancho para que respire con el gráfico circular) */}
+      <motion.div variants={sectionVariants}>
         <StockChart />
       </motion.div>
 
+      {/* Fila 3: Alertas y Donut de Envíos en dos columnas equilibradas */}
       <motion.div
         variants={sectionVariants}
-        className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6"
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
       >
         <AlertsPanel />
         <ShipmentDonut />

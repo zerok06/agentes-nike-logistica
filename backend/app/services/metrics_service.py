@@ -30,12 +30,15 @@ class MetricsService:
         if category:
             base_filters.append(Category.name == category)
 
-        result = await self.session.execute(
-            select(
-                func.sum(Inventory.stock_qty).label("total_stock"),
-                func.count(Inventory.inventory_id).label("total_items"),
-            )
+        query_stock = select(
+            func.sum(Inventory.stock_qty).label("total_stock"),
+            func.count(Inventory.inventory_id).label("total_items"),
         )
+        if base_filters:
+            query_stock = query_stock.where(and_(*base_filters))
+            if category:
+                query_stock = query_stock.join(Product, Inventory.product_id == Product.product_id).join(Category, Product.category_id == Category.category_id)
+        result = await self.session.execute(query_stock)
         row = result.first()
         total_stock = int(row.total_stock or 0)
 
@@ -55,40 +58,79 @@ class MetricsService:
                 critical_count += 1
             total_value += inv.stock_qty * float(prod.unit_price)
 
-        result = await self.session.execute(select(func.count(Product.product_id)))
-        total_products = result.scalar()
+        query_prod_count = select(func.count(Product.product_id))
+        if category:
+            query_prod_count = query_prod_count.join(Category, Product.category_id == Category.category_id).where(Category.name == category)
+        if warehouse_id:
+            query_prod_count = select(func.count(func.distinct(Inventory.product_id))).where(Inventory.warehouse_id == warehouse_id)
+            if category:
+                query_prod_count = query_prod_count.join(Product, Inventory.product_id == Product.product_id).join(Category, Product.category_id == Category.category_id).where(Category.name == category)
+        result = await self.session.execute(query_prod_count)
+        total_products = result.scalar() or 0
 
-        result = await self.session.execute(select(func.count(Warehouse.warehouse_id)))
-        total_warehouses = result.scalar()
+        if warehouse_id:
+            total_warehouses = 1
+        else:
+            result = await self.session.execute(select(func.count(Warehouse.warehouse_id)))
+            total_warehouses = result.scalar() or 1
 
-        result = await self.session.execute(
-            select(func.sum(Inventory.stock_qty)).where(Inventory.stock_qty < Inventory.min_stock)
-        )
+        query_crit = select(func.sum(Inventory.stock_qty)).where(Inventory.stock_qty < Inventory.min_stock)
+        query_norm = select(func.sum(Inventory.stock_qty)).where(Inventory.stock_qty >= Inventory.min_stock)
+        if warehouse_id:
+            query_crit = query_crit.where(Inventory.warehouse_id == warehouse_id)
+            query_norm = query_norm.where(Inventory.warehouse_id == warehouse_id)
+        if category:
+            query_crit = query_crit.join(Product, Inventory.product_id == Product.product_id).join(Category, Product.category_id == Category.category_id).where(Category.name == category)
+            query_norm = query_norm.join(Product, Inventory.product_id == Product.product_id).join(Category, Product.category_id == Category.category_id).where(Category.name == category)
+            
+        result = await self.session.execute(query_crit)
         critical_units = int(result.scalar() or 0)
 
-        result = await self.session.execute(
-            select(func.sum(Inventory.stock_qty)).where(Inventory.stock_qty >= Inventory.min_stock)
-        )
+        result = await self.session.execute(query_norm)
         normal_units = int(result.scalar() or 0)
 
+        orders_filter = []
+        if warehouse_id:
+            orders_filter.append(SalesOrder.sales_order_id.in_(
+                select(Shipment.sales_order_id)
+                .where(and_(Shipment.warehouse_id == warehouse_id, Shipment.sales_order_id.isnot(None)))
+            ))
+        if category:
+            orders_filter.append(SalesOrder.sales_order_id.in_(
+                select(SalesOrderItem.sales_order_id)
+                .join(Product, SalesOrderItem.product_id == Product.product_id)
+                .join(Category, Product.category_id == Category.category_id)
+                .where(Category.name == category)
+            ))
+            
         result = await self.session.execute(
             select(func.count(SalesOrder.sales_order_id)).where(
-                SalesOrder.status.in_(["shipped", "delivered"])
+                and_(
+                    SalesOrder.status.in_(["shipped", "delivered"]),
+                    *(orders_filter)
+                ) if orders_filter else SalesOrder.status.in_(["shipped", "delivered"])
             )
         )
         fulfilled_orders = result.scalar()
 
-        result = await self.session.execute(select(func.count(SalesOrder.sales_order_id)))
-        total_orders = result.scalar() or 1
-
-        fulfillment_rate = round((fulfilled_orders / total_orders) * 100, 1)
-
         result = await self.session.execute(
-            select(
-                func.sum(case((InventoryMovement.movement_type == "salida", InventoryMovement.quantity), else_=0)).label("total_out"),
-                func.sum(case((InventoryMovement.movement_type == "entrada", InventoryMovement.quantity), else_=0)).label("total_in"),
+            select(func.count(SalesOrder.sales_order_id)).where(
+                and_(*orders_filter) if orders_filter else True
             )
         )
+        total_orders = result.scalar() or 1
+
+        fulfillment_rate = round((fulfilled_orders / total_orders) * 100, 1) if total_orders > 0 else 0.0
+
+        query_movs = select(
+            func.sum(case((InventoryMovement.movement_type == "salida", InventoryMovement.quantity), else_=0)).label("total_out"),
+            func.sum(case((InventoryMovement.movement_type == "entrada", InventoryMovement.quantity), else_=0)).label("total_in"),
+        )
+        if warehouse_id:
+            query_movs = query_movs.where(InventoryMovement.warehouse_id == warehouse_id)
+        if category:
+            query_movs = query_movs.join(Product, InventoryMovement.product_id == Product.product_id).join(Category, Product.category_id == Category.category_id).where(Category.name == category)
+        result = await self.session.execute(query_movs)
         mov_row = result.first()
         total_out = int(mov_row.total_out or 0)
         total_in = int(mov_row.total_in or 0)
@@ -98,38 +140,43 @@ class MetricsService:
 
         days_of_inventory = round((total_stock / (total_out / 7)) if total_out > 0 else 0, 1)
 
-        result = await self.session.execute(
-            select(
-                func.count(Shipment.shipment_id).label("total"),
-                func.sum(case((Shipment.status == "en_transito", 1), else_=0)).label("in_transit"),
-                func.sum(case((Shipment.status == "preparacion", 1), else_=0)).label("prep"),
-                func.sum(case((Shipment.status == "entregado", 1), else_=0)).label("delivered"),
-            )
+        query_ship = select(
+            func.count(Shipment.shipment_id).label("total"),
+            func.sum(case((Shipment.status == "en_transito", 1), else_=0)).label("in_transit"),
+            func.sum(case((Shipment.status == "preparacion", 1), else_=0)).label("prep"),
+            func.sum(case((Shipment.status == "entregado", 1), else_=0)).label("delivered"),
         )
+        if warehouse_id:
+            query_ship = query_ship.where(Shipment.warehouse_id == warehouse_id)
+        result = await self.session.execute(query_ship)
         ship_row = result.first()
         total_shipments = int(ship_row.total or 0)
         in_transit = int(ship_row.in_transit or 0)
         prep_shipments = int(ship_row.prep or 0)
         delivered_shipments = int(ship_row.delivered or 0)
 
-        result = await self.session.execute(
-            select(
-                func.avg(
-                    case(
-                        (Shipment.estimated_delivery.isnot(None), Shipment.estimated_delivery - Shipment.shipment_date),
-                        else_=None
-                    )
-                ).label("avg_days")
-            )
+        query_cycle = select(
+            func.avg(
+                case(
+                    (Shipment.estimated_delivery.isnot(None), Shipment.estimated_delivery - Shipment.shipment_date),
+                    else_=None
+                )
+            ).label("avg_days")
         )
+        if warehouse_id:
+            query_cycle = query_cycle.where(Shipment.warehouse_id == warehouse_id)
+        result = await self.session.execute(query_cycle)
         avg_cycle_days = float(result.scalar() or 0)
         cycle_time_hours = round(avg_cycle_days * 24, 1)
 
-        result = await self.session.execute(
+        query_cap = (
             select(Warehouse.warehouse_id, Warehouse.capacity, func.sum(Inventory.stock_qty))
             .join(Inventory, Inventory.warehouse_id == Warehouse.warehouse_id, isouter=True)
             .group_by(Warehouse.warehouse_id, Warehouse.capacity)
         )
+        if warehouse_id:
+            query_cap = query_cap.where(Warehouse.warehouse_id == warehouse_id)
+        result = await self.session.execute(query_cap)
         capacity_total = 0
         capacity_used = 0
         for r in result.all():
@@ -138,21 +185,26 @@ class MetricsService:
                 capacity_used += int(r[2] or 0)
         capacity_utilization = round((capacity_used / capacity_total) * 100, 1) if capacity_total > 0 else 0
 
-        result = await self.session.execute(
-            select(func.count(TransferOrder.transfer_id)).where(
-                TransferOrder.status.in_(["pending", "approved"])
-            )
+        query_transfers = select(func.count(TransferOrder.transfer_id)).where(
+            TransferOrder.status.in_(["pending", "approved"])
         )
+        if warehouse_id:
+            query_transfers = query_transfers.where(
+                (TransferOrder.from_warehouse_id == warehouse_id) |
+                (TransferOrder.to_warehouse_id == warehouse_id)
+            )
+        result = await self.session.execute(query_transfers)
         pending_transfers = result.scalar()
 
-        result = await self.session.execute(
-            select(func.count(Shipment.shipment_id)).where(
-                and_(
-                    Shipment.estimated_delivery < func.current_date(),
-                    Shipment.status != "entregado"
-                )
+        query_delayed = select(func.count(Shipment.shipment_id)).where(
+            and_(
+                Shipment.estimated_delivery < func.current_date(),
+                Shipment.status != "entregado"
             )
         )
+        if warehouse_id:
+            query_delayed = query_delayed.where(Shipment.warehouse_id == warehouse_id)
+        result = await self.session.execute(query_delayed)
         delayed_shipments = result.scalar()
 
         service_level = round(((total_orders - 0) / total_orders) * 100, 1) if total_orders > 0 else 100.0
@@ -213,17 +265,18 @@ class MetricsService:
             })
         return warehouses
 
-    async def get_movement_trends(self, days: int = 7) -> list[dict]:
+    async def get_movement_trends(self, days: int = 7, warehouse_id: int | None = None) -> list[dict]:
         start_date = datetime.utcnow() - timedelta(days=days)
-        result = await self.session.execute(
-            select(
-                InventoryMovement.movement_date,
-                InventoryMovement.movement_type,
-                InventoryMovement.quantity,
-            )
-            .where(InventoryMovement.movement_date >= start_date)
-            .order_by(InventoryMovement.movement_date)
-        )
+        query = select(
+            InventoryMovement.movement_date,
+            InventoryMovement.movement_type,
+            InventoryMovement.quantity,
+        ).where(InventoryMovement.movement_date >= start_date)
+        
+        if warehouse_id:
+            query = query.where(InventoryMovement.warehouse_id == warehouse_id)
+            
+        result = await self.session.execute(query.order_by(InventoryMovement.movement_date))
         movements = result.all()
 
         from collections import defaultdict
@@ -295,16 +348,19 @@ class MetricsService:
             })
         return categories
 
-    async def get_alerts(self) -> list[dict]:
+    async def get_alerts(self, warehouse_id: int | None = None) -> list[dict]:
         alerts = []
 
-        result = await self.session.execute(
+        query = (
             select(Inventory, Product, Warehouse)
             .join(Product, Inventory.product_id == Product.product_id)
             .join(Warehouse, Inventory.warehouse_id == Warehouse.warehouse_id)
             .where(Inventory.stock_qty < Inventory.min_stock)
-            .order_by(Inventory.stock_qty.asc())
         )
+        if warehouse_id:
+            query = query.where(Inventory.warehouse_id == warehouse_id)
+            
+        result = await self.session.execute(query.order_by(Inventory.stock_qty.asc()))
         for inv, prod, wh in result.all():
             alerts.append({
                 "type": "critical_stock",
@@ -318,7 +374,7 @@ class MetricsService:
                 "min_stock": inv.min_stock,
             })
 
-        result = await self.session.execute(
+        query_ship = (
             select(Shipment, Route)
             .outerjoin(Route, Shipment.route_id == Route.route_id)
             .where(
@@ -328,6 +384,10 @@ class MetricsService:
                 )
             )
         )
+        if warehouse_id:
+            query_ship = query_ship.where(Shipment.warehouse_id == warehouse_id)
+            
+        result = await self.session.execute(query_ship)
         for ship, route in result.all():
             alerts.append({
                 "type": "delayed_shipment",
@@ -339,11 +399,18 @@ class MetricsService:
                 "estimated_delivery": str(ship.estimated_delivery) if ship.estimated_delivery else None,
             })
 
-        result = await self.session.execute(
+        query_transfer = (
             select(TransferOrder, Product)
             .join(Product, TransferOrder.product_id == Product.product_id)
             .where(TransferOrder.status == "pending")
         )
+        if warehouse_id:
+            query_transfer = query_transfer.where(
+                (TransferOrder.from_warehouse_id == warehouse_id) | 
+                (TransferOrder.to_warehouse_id == warehouse_id)
+            )
+            
+        result = await self.session.execute(query_transfer)
         for transfer, prod in result.all():
             alerts.append({
                 "type": "pending_transfer",
@@ -356,24 +423,23 @@ class MetricsService:
 
         return alerts
 
-    async def get_shipment_stats(self) -> dict:
-        result = await self.session.execute(
-            select(
-                Shipment.status,
-                func.count(Shipment.shipment_id).label("count"),
-            )
-            .group_by(Shipment.status)
+    async def get_shipment_stats(self, warehouse_id: int | None = None) -> dict:
+        query_status = select(
+            Shipment.status,
+            func.count(Shipment.shipment_id).label("count"),
         )
+        if warehouse_id:
+            query_status = query_status.where(Shipment.warehouse_id == warehouse_id)
+        result = await self.session.execute(query_status.group_by(Shipment.status))
         by_status = {r.status: int(r.count) for r in result.all()}
 
-        result = await self.session.execute(
-            select(
-                Shipment.carrier,
-                func.count(Shipment.shipment_id).label("count"),
-            )
-            .where(Shipment.carrier.isnot(None))
-            .group_by(Shipment.carrier)
-        )
+        query_carrier = select(
+            Shipment.carrier,
+            func.count(Shipment.shipment_id).label("count"),
+        ).where(Shipment.carrier.isnot(None))
+        if warehouse_id:
+            query_carrier = query_carrier.where(Shipment.warehouse_id == warehouse_id)
+        result = await self.session.execute(query_carrier.group_by(Shipment.carrier))
         by_carrier = {r.carrier: int(r.count) for r in result.all()}
 
         result = await self.session.execute(
@@ -410,24 +476,68 @@ class MetricsService:
             filters.append(Inventory.warehouse_id == warehouse_id)
         result = await self.session.execute(
             select(
+                Warehouse.warehouse_id,
                 Warehouse.warehouse_name,
                 Warehouse.city,
-                func.sum(Inventory.stock_qty).label("total"),
-                func.sum(case((Inventory.stock_qty < Inventory.min_stock, 1), else_=0)).label("critical"),
-                func.sum(case((Inventory.stock_qty >= Inventory.min_stock, 1), else_=0)).label("normal"),
+                Category.name.label("category_name"),
+                func.sum(Inventory.stock_qty).label("stock"),
+                func.sum(case((Inventory.stock_qty < Inventory.min_stock, Inventory.stock_qty), else_=0)).label("critical"),
+                func.sum(case((Inventory.stock_qty >= Inventory.min_stock, Inventory.stock_qty), else_=0)).label("normal"),
             )
             .join(Inventory, Inventory.warehouse_id == Warehouse.warehouse_id)
+            .outerjoin(Product, Inventory.product_id == Product.product_id)
+            .outerjoin(Category, Product.category_id == Category.category_id)
             .where(and_(*filters) if filters else True)
-            .group_by(Warehouse.warehouse_id, Warehouse.warehouse_name, Warehouse.city)
-            .order_by(func.sum(Inventory.stock_qty).desc())
+            .group_by(Warehouse.warehouse_id, Warehouse.warehouse_name, Warehouse.city, Category.name)
+            .order_by(Warehouse.warehouse_name)
         )
-        warehouses = []
+        warehouses_dict = {}
         for r in result.all():
-            warehouses.append({
-                "name": r.warehouse_name,
-                "city": r.city,
-                "total": int(r.total or 0),
+            w_id = r.warehouse_id
+            if w_id not in warehouses_dict:
+                warehouses_dict[w_id] = {
+                    "name": r.warehouse_name,
+                    "city": r.city,
+                    "total": 0,
+                    "critical": 0,
+                    "normal": 0,
+                    "breakdown": []
+                }
+            
+            cat_name = r.category_name or "Sin Categoría"
+            cat_lower = cat_name.lower()
+            
+            # Map specific colors for each subcategory of footwear and others to ensure visual contrast
+            if 'running' in cat_lower:
+                color = '#ff7a00'       # Bright Nike Orange
+            elif 'lifestyle' in cat_lower:
+                color = '#8b5cf6'       # Purple
+            elif 'training' in cat_lower:
+                color = '#06b6d4'       # Cyan
+            elif 'basketball' in cat_lower:
+                color = '#ec4899'       # Pink
+            elif 'fútbol' in cat_lower or 'futbol' in cat_lower:
+                color = '#f59e0b'       # Amber / Yellow
+            elif 'ropa' in cat_lower or 'vestimenta' in cat_lower or 'clothing' in cat_lower or 'textil' in cat_lower:
+                color = '#10b981'       # Emerald Green
+            elif 'accesorios' in cat_lower or 'accessories' in cat_lower:
+                color = '#ef4444'       # Red
+            elif 'calzado' in cat_lower or 'shoes' in cat_lower or 'sneakers' in cat_lower or 'zapatillas' in cat_lower or 'zapato' in cat_lower:
+                color = '#d97706'       # Dark Amber
+            else:
+                color = '#3b82f6'       # Default Blue
+
+            stock_val = int(r.stock or 0)
+            warehouses_dict[w_id]["total"] += stock_val
+            warehouses_dict[w_id]["critical"] += int(r.critical or 0)
+            warehouses_dict[w_id]["normal"] += int(r.normal or 0)
+            warehouses_dict[w_id]["breakdown"].append({
+                "name": cat_name,
+                "value": stock_val,
                 "critical": int(r.critical or 0),
-                "normal": int(r.normal or 0),
+                "color": color
             })
-        return warehouses
+        
+        res_list = list(warehouses_dict.values())
+        res_list.sort(key=lambda x: x["total"], reverse=True)
+        return res_list

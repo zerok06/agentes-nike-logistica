@@ -1,22 +1,24 @@
 import React, { useEffect, useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
-import { Card } from '../ui/card'
-import { Badge } from '../ui/badge'
+import { Card } from '../ui/Card'
+import { Badge } from '../ui/Badge'
 import { ChartSkeleton } from '../metrics/MetricCardSkeleton'
 import { metricsService } from '../../services/metrics.service'
 import type { Alert } from '../../types/metrics'
+import { useDashboardFilters } from '../../context/DashboardFilterContext'
 
 export const AlertsPanel: React.FC = () => {
+  const { filters } = useDashboardFilters()
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setLoading(true)
-    metricsService.getAlerts()
+    metricsService.getAlerts(filters.warehouseId)
       .then(setAlerts)
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [filters.warehouseId])
 
   if (loading) {
     return <ChartSkeleton />

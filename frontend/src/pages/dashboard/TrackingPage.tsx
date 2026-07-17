@@ -91,10 +91,36 @@ const VEHICLE_SPEEDS: Record<VehicleType, { min: number; max: number }> = {
 }
 
 const statusConfig: Record<VehicleStatus, { label: string; variant: 'info' | 'warning' | 'success' | 'danger'; color: string }> = {
-  en_transito: { label: 'En Tránsito', variant: 'info', color: '#3B82F6' },
-  pendiente: { label: 'Pendiente', variant: 'warning', color: '#FBBF24' },
-  entregado: { label: 'Entregado', variant: 'success', color: '#22C55E' },
-  retrasado: { label: 'Retrasado', variant: 'danger', color: '#EF4444' },
+  en_transito: { label: 'En Tránsito', variant: 'info', color: '#06b6d4' },
+  pendiente: { label: 'Pendiente', variant: 'warning', color: '#f59e0b' },
+  entregado: { label: 'Entregado', variant: 'success', color: '#10b981' },
+  retrasado: { label: 'Retrasado', variant: 'danger', color: '#ef4444' },
+}
+
+// Función auxiliar para asignar estilos de color semántico a las barras y estados
+const getStatusStyles = (status: VehicleStatus) => {
+  switch (status) {
+    case 'entregado':
+      return {
+        bar: 'bg-gradient-to-r from-emerald-600 to-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.5)]',
+      }
+    case 'en_transito':
+      return {
+        bar: 'bg-gradient-to-r from-cyan-600 to-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.5)]',
+      }
+    case 'pendiente':
+      return {
+        bar: 'bg-gradient-to-r from-amber-600 to-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]',
+      }
+    case 'retrasado':
+      return {
+        bar: 'bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_10px_rgba(239,68,68,0.6)] animate-pulse',
+      }
+    default:
+      return {
+        bar: 'bg-gradient-to-r from-orange-600 to-orange-400',
+      }
+  }
 }
 
 const sedeStatusConfig = {
@@ -410,8 +436,8 @@ export const TrackingPage: React.FC = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total Envíos', value: stats.total, icon: <Package className="w-5 h-5 text-nikeOrange" />, color: 'text-nikeOrange' },
-          { label: 'En Tránsito', value: stats.enTransito, icon: <Truck className="w-5 h-5 text-blue-400" />, color: 'text-blue-400' },
-          { label: 'Entregados', value: stats.entregados, icon: <CheckCircle2 className="w-5 h-5 text-green-500" />, color: 'text-green-500' },
+          { label: 'En Tránsito', value: stats.enTransito, icon: <Truck className="w-5 h-5 text-cyan-400" />, color: 'text-cyan-400' },
+          { label: 'Entregados', value: stats.entregados, icon: <CheckCircle2 className="w-5 h-5 text-emerald-400" />, color: 'text-emerald-400' },
           { label: 'Retrasados', value: stats.retrasados, icon: <AlertCircle className="w-5 h-5 text-red-500" />, color: 'text-red-500' },
         ].map((stat) => (
           <Card key={stat.label}>
@@ -441,18 +467,18 @@ export const TrackingPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-white/40 uppercase tracking-wider font-semibold">Recorrido</p>
-              <p className="text-2xl font-bold mt-1 text-green-400">{totalTraveled.toFixed(0)} km</p>
+              <p className="text-2xl font-bold mt-1 text-emerald-400">{totalTraveled.toFixed(0)} km</p>
             </div>
-            <div className="p-2.5 rounded-2xl bg-white/5"><Activity className="w-5 h-5 text-green-400" /></div>
+            <div className="p-2.5 rounded-2xl bg-white/5"><Activity className="w-5 h-5 text-emerald-400" /></div>
           </div>
         </Card>
         <Card>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-white/40 uppercase tracking-wider font-semibold">Velocidad Promedio</p>
-              <p className="text-2xl font-bold mt-1 text-blue-400">{Math.round(avgSpeed)} km/h</p>
+              <p className="text-2xl font-bold mt-1 text-cyan-400">{Math.round(avgSpeed)} km/h</p>
             </div>
-            <div className="p-2.5 rounded-2xl bg-white/5"><Gauge className="w-5 h-5 text-blue-400" /></div>
+            <div className="p-2.5 rounded-2xl bg-white/5"><Gauge className="w-5 h-5 text-cyan-400" /></div>
           </div>
         </Card>
       </div>
@@ -479,7 +505,6 @@ export const TrackingPage: React.FC = () => {
 
                 <AutoFit sedes={SEDES} />
 
-                {/* Full route polylines (faded) */}
                 {vehicles
                   .filter((v) => v.status === 'en_transito' || v.status === 'retrasado')
                   .map((v) => (
@@ -495,7 +520,6 @@ export const TrackingPage: React.FC = () => {
                     />
                   ))}
 
-                {/* Traveled path polylines (solid) */}
                 {vehicles
                   .filter((v) => v.status === 'en_transito' || v.status === 'retrasado')
                   .map((v) => {
@@ -516,7 +540,6 @@ export const TrackingPage: React.FC = () => {
                     )
                   })}
 
-                {/* Sede markers */}
                 {SEDES.map((sede) => (
                   <Marker
                     key={sede.id}
@@ -552,7 +575,6 @@ export const TrackingPage: React.FC = () => {
                   </Marker>
                 ))}
 
-                {/* Vehicle markers (animated) */}
                 {vehicles
                   .filter((v) => v.status === 'en_transito' || v.status === 'retrasado')
                   .map((v) => (
@@ -592,7 +614,7 @@ export const TrackingPage: React.FC = () => {
                 </div>
               ))}
               <div className="flex items-center gap-1.5">
-                <Navigation className="w-3 h-3 text-blue-400" />
+                <Navigation className="w-3 h-3 text-cyan-400" />
                 Ruta de envío
               </div>
             </div>
@@ -704,6 +726,7 @@ export const TrackingPage: React.FC = () => {
           <AnimatePresence>
             {filteredVehicles.map((vehicle) => {
               const status = statusConfig[vehicle.status]
+              const customStyles = getStatusStyles(vehicle.status)
               return (
                 <motion.div
                   key={vehicle.id}
@@ -738,10 +761,11 @@ export const TrackingPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="mb-3">
-                    <Progress
-                      value={vehicle.progress}
-                      indicatorClassName=""
+                  {/* Barra de progreso con color semántico aplicado */}
+                  <div className="mb-3 w-full bg-white/10 h-2.5 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${customStyles.bar}`} 
+                      style={{ width: `${vehicle.progress}%` }} 
                     />
                   </div>
 
@@ -843,11 +867,12 @@ export const TrackingPage: React.FC = () => {
                     <span>Progreso del viaje</span>
                     <span>{Math.round(selectedVehicle.progress)}% — {selectedVehicle.traveledKm.toFixed(1)} km recorridos</span>
                   </div>
-                  <Progress
-                    value={selectedVehicle.progress}
-                    indicatorClassName=""
-                    className="h-3"
-                  />
+                  <div className="w-full bg-white/10 h-3 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${getStatusStyles(selectedVehicle.status).bar}`} 
+                      style={{ width: `${selectedVehicle.progress}%` }} 
+                    />
+                  </div>
                 </div>
 
                 <Button variant="secondary" className="w-full" onClick={() => setSelectedVehicle(null)}>

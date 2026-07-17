@@ -84,4 +84,10 @@ export interface StockByWarehouse {
   total: number
   critical: number
   normal: number
+  breakdown?: {
+    name: string
+    value: number
+    critical: number
+    color: string
+  }[]
 }

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { Activity } from 'lucide-react'
-import { Card } from '../ui/card'
+import { Card } from '../ui/Card'
 import { ChartSkeleton } from '../metrics/MetricCardSkeleton'
 import { metricsService } from '../../services/metrics.service'
 import { useDashboardFilters } from '../../context/DashboardFilterContext'
@@ -14,11 +14,11 @@ export const TrendChart: React.FC = () => {
 
   useEffect(() => {
     setLoading(true)
-    metricsService.getTrends(filters.timeRange)
+    metricsService.getTrends(filters.timeRange, filters.warehouseId)
       .then(setData)
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [filters.timeRange])
+  }, [filters.timeRange, filters.warehouseId])
 
   if (loading) {
     return <ChartSkeleton className="lg:col-span-2" />

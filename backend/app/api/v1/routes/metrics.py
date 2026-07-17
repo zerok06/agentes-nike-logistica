@@ -2,6 +2,7 @@ import csv
 import io
 from fastapi import APIRouter, Depends, Query, Response
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_central_db
@@ -44,13 +45,14 @@ async def get_warehouse_performance(
 @router.get("/trends")
 async def get_movement_trends(
     days: int = Query(7, ge=1, le=90),
+    warehouse_id: int | None = Query(None),
     db: AsyncSession = Depends(get_central_db),
     current_user: AuthenticatedUser = Depends(
         require_roles(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR)
     ),
 ) -> list[dict]:
     service = MetricsService(db)
-    return await service.get_movement_trends(days)
+    return await service.get_movement_trends(days, warehouse_id)
 
 
 @router.get("/top-products")
@@ -78,24 +80,26 @@ async def get_category_distribution(
 
 @router.get("/alerts")
 async def get_alerts(
+    warehouse_id: int | None = Query(None),
     db: AsyncSession = Depends(get_central_db),
     current_user: AuthenticatedUser = Depends(
         require_roles(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR)
     ),
 ) -> list[dict]:
     service = MetricsService(db)
-    return await service.get_alerts()
+    return await service.get_alerts(warehouse_id)
 
 
 @router.get("/shipments")
 async def get_shipment_stats(
+    warehouse_id: int | None = Query(None),
     db: AsyncSession = Depends(get_central_db),
     current_user: AuthenticatedUser = Depends(
         require_roles(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR)
     ),
 ) -> dict:
     service = MetricsService(db)
-    return await service.get_shipment_stats()
+    return await service.get_shipment_stats(warehouse_id=warehouse_id)
 
 
 @router.get("/stock-by-warehouse")
