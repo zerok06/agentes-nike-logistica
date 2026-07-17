@@ -7,23 +7,7 @@ import { metricsService } from '../../services/metrics.service'
 import type { ShipmentStats } from '../../types/metrics'
 import { useDashboardFilters } from '../../context/DashboardFilterContext'
 
-const CHART_COLORS = {
-  nikeOrange: '#f97316',
-  green: '#10b981',
-  yellow: '#f59e0b',
-  red: '#ef4444',
-  purple: '#8b5cf6',
-  blue: '#3b82f6',
-}
 
-const COLOR_PALETTE = [
-  CHART_COLORS.nikeOrange,
-  CHART_COLORS.green,
-  CHART_COLORS.yellow,
-  CHART_COLORS.red,
-  CHART_COLORS.purple,
-  CHART_COLORS.blue,
-]
 
 export const ShipmentDonut: React.FC = () => {
   const [data, setData] = useState<ShipmentStats | null>(null)
@@ -49,11 +33,20 @@ export const ShipmentDonut: React.FC = () => {
   }
 
   const chartData = data
-    ? Object.entries(data.by_status).map(([name, value], i) => ({
-      name,
-      value,
-      color: COLOR_PALETTE[i % COLOR_PALETTE.length],
-    }))
+    ? Object.entries(data.by_status).map(([name, value]) => {
+      let color = '#94a3b8' // Default slate
+      const nameLower = name.toLowerCase()
+      if (nameLower.includes('entregado') || nameLower.includes('delivered')) {
+        color = '#ffffff' // Stark White for Delivered
+      } else if (nameLower.includes('tránsito') || nameLower.includes('transit') || nameLower.includes('ruta')) {
+        color = '#94a3b8' // Slate for In Transit
+      } else if (nameLower.includes('retrasado') || nameLower.includes('delay') || nameLower.includes('incidencia') || nameLower.includes('crítico')) {
+        color = '#ef4444' // RED for Delayed/Urgent Alerts!
+      } else {
+        color = '#475569' // Charcoal/Gray for Pending/Preparing
+      }
+      return { name, value, color }
+    })
     : []
 
   const totalShipments = chartData.reduce((acc, curr) => acc + curr.value, 0)
@@ -63,7 +56,7 @@ export const ShipmentDonut: React.FC = () => {
   return (
     <Card
       title="Estado de Envíos - Logística"
-      icon={<Truck className="w-5 h-5 text-orange-500 filter drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]" />}
+      icon={<Truck className="w-5 h-5 text-white filter drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]" />}
     >
       <div className="text-xs text-white/40 -mt-4 mb-6 italic">
         Distribución y ciclo operativo de despachos en tiempo real
@@ -74,8 +67,8 @@ export const ShipmentDonut: React.FC = () => {
         <div className="md:col-span-7 h-[220px] relative flex items-center justify-center bg-white/[0.02] rounded-2xl border border-white/5 p-2">
 
           {/* Indicador superior flotante */}
-          <div className="absolute top-2 left-3 text-[10px] font-mono text-orange-400 uppercase tracking-widest flex items-center gap-1">
-            <Activity className="w-3 h-3" /> Monitoreo Activo
+          <div className="absolute top-2 left-3 text-[10px] font-mono text-white/70 uppercase tracking-widest flex items-center gap-1">
+            <Activity className="w-3 h-3 text-white/40" /> Monitoreo Activo
           </div>
 
           <ResponsiveContainer width="100%" height="100%">
@@ -96,7 +89,7 @@ export const ShipmentDonut: React.FC = () => {
                     stroke="rgba(255,255,255,0.15)"
                     strokeWidth={index === activeIndex ? 2 : 1}
                     style={{
-                      filter: index === activeIndex ? 'drop-shadow(0px 0px 8px rgba(249,115,22,0.6))' : 'none',
+                      filter: index === activeIndex ? `drop-shadow(0px 0px 8px ${entry.color}80)` : 'none',
                       transition: 'all 0.3s ease'
                     }}
                   />
@@ -104,8 +97,8 @@ export const ShipmentDonut: React.FC = () => {
               </Pie>
               <Tooltip
                 contentStyle={{
-                  background: '#141418',
-                  border: '1px solid rgba(249, 115, 22, 0.4)',
+                  background: '#09090b',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
                   borderRadius: '12px',
                   fontSize: '12px',
                   color: '#fff',
@@ -120,7 +113,7 @@ export const ShipmentDonut: React.FC = () => {
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
               <span className="text-[10px] font-mono text-slate-400 uppercase max-w-[80px] truncate">{activeItem.name}</span>
               <span className="text-lg font-extrabold text-white mt-0.5">{activeItem.value}</span>
-              <span className="text-[10px] font-bold text-orange-400">{percentage}%</span>
+              <span className="text-[10px] font-bold text-white/80">{percentage}%</span>
             </div>
           )}
         </div>
@@ -141,9 +134,10 @@ export const ShipmentDonut: React.FC = () => {
                   key={index}
                   onMouseEnter={() => setActiveIndex(index)}
                   className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${isSelected
-                      ? 'bg-orange-500/10 border-orange-500/40 shadow-[0_0_12px_rgba(249,115,22,0.15)]'
+                      ? 'bg-white/10 border-white/20'
                       : 'bg-black/20 border-white/5 hover:border-white/10'
                     }`}
+                  style={isSelected ? { boxShadow: `0 0 12px ${item.color}33` } : undefined}
                 >
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: item.color }} />

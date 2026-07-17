@@ -49,11 +49,11 @@ export const DashboardFilterBar: React.FC<{
   }, [])
 
   return (
-    <div className="w-full bg-gradient-to-b from-[#141418] to-[#0c0c0e] border-t border-white/15 border-x border-white/10 border-b border-black/40 rounded-3xl p-6 shadow-[0_20px_40px_rgba(0,0,0,0.8)] flex flex-wrap items-center justify-between gap-6 transition-all duration-300 hover:border-white/25">
+    <div className="w-full glass-panel rounded-3xl p-6 flex flex-wrap items-center justify-between gap-6 transition-all duration-300">
       <div className="flex items-center gap-3">
         <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
         </span>
         <span className="text-xs font-mono uppercase tracking-wider text-white/60">Filtros de Comando Operativo</span>
       </div>
@@ -63,11 +63,11 @@ export const DashboardFilterBar: React.FC<{
 
         {/* Selector de Almacenes con diseño estilizado */}
         <div className="relative flex items-center">
-          <Warehouse className="absolute left-3.5 w-4 h-4 text-[#ff7a00] pointer-events-none" />
+          <Warehouse className="absolute left-3.5 w-4 h-4 text-white/60 pointer-events-none" />
           <select
             value={filters.warehouseId ?? ''}
             onChange={(e) => setWarehouseId(e.target.value ? Number(e.target.value) : null)}
-            className="pl-10 pr-9 py-2.5 rounded-2xl bg-[#121215] border border-white/15 text-white/90 text-xs font-semibold focus:outline-none focus:border-[#ff7a00] focus:ring-2 focus:ring-[#ff7a00]/20 appearance-none cursor-pointer shadow-lg transition-all hover:bg-[#15151b] hover:border-white/25"
+            className="pl-10 pr-9 py-2.5 rounded-2xl bg-[#0f0f13] border border-white/10 text-white/90 text-xs font-semibold focus:outline-none focus:border-white focus:ring-2 focus:ring-white/20 appearance-none cursor-pointer shadow-lg transition-all hover:bg-[#15151b] hover:border-white/20"
           >
             <option value="">Todos los almacenes</option>
             {warehouses.map((w) => (
@@ -79,11 +79,11 @@ export const DashboardFilterBar: React.FC<{
 
         {/* Selector de Categorías con diseño estilizado */}
         <div className="relative flex items-center">
-          <Tag className="absolute left-3.5 w-4 h-4 text-[#ff7a00] pointer-events-none" />
+          <Tag className="absolute left-3.5 w-4 h-4 text-white/60 pointer-events-none" />
           <select
             value={filters.category ?? ''}
             onChange={(e) => setCategory(e.target.value || null)}
-            className="pl-10 pr-9 py-2.5 rounded-2xl bg-[#121215] border border-white/15 text-white/90 text-xs font-semibold focus:outline-none focus:border-[#ff7a00] focus:ring-2 focus:ring-[#ff7a00]/20 appearance-none cursor-pointer shadow-lg transition-all hover:bg-[#15151b] hover:border-white/25"
+            className="pl-10 pr-9 py-2.5 rounded-2xl bg-[#0f0f13] border border-white/10 text-white/90 text-xs font-semibold focus:outline-none focus:border-white focus:ring-2 focus:ring-white/20 appearance-none cursor-pointer shadow-lg transition-all hover:bg-[#15151b] hover:border-white/20"
           >
             <option value="">Todas las categorías</option>
             {categories.map((c) => (

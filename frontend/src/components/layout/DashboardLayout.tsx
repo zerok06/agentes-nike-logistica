@@ -49,7 +49,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const title = pageTitleMap[location.pathname] || 'Dashboard'
 
   return (
-    <div className="min-h-screen bg-background text-white flex">
+    <div className="min-h-screen bg-command-center text-white flex relative overflow-hidden">
+      {/* Background command center tactical canvas */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute inset-0 dot-matrix" />
+        <div className="absolute inset-0 tech-grid" />
+        {/* Spotlights: Stark White top-right, Metallic Silver bottom-left */}
+        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-white/4 rounded-full blur-[150px]" />
+        <div className="absolute -bottom-40 -left-40 w-[750px] h-[750px] bg-slate-500/4 rounded-full blur-[180px]" />
+      </div>
+
       <Sidebar
         collapsed={collapsed}
         setCollapsed={setCollapsed}
@@ -58,7 +67,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
         isMobile={isMobile}
       />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 relative z-10">
         <Header
           title={title}
           onMenuClick={() => setMobileOpen(true)}

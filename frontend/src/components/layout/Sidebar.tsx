@@ -92,16 +92,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
           x: isMobile && !mobileOpen ? -300 : 0,
         }}
         className={cn(
-          'fixed lg:sticky top-0 left-0 h-screen z-50 glass-panel border-r border-white/5 flex flex-col transition-all',
+          'fixed lg:sticky top-0 left-0 h-screen z-50 glass-panel border-r border-white/10 flex flex-col transition-all',
           isMobile && !mobileOpen && 'pointer-events-none',
         )}
         style={{ width: collapsed ? 80 : 260 }}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between gap-3 p-6 border-b border-white/5 h-20">
+        <div className="flex items-center justify-between gap-3 p-6 border-b border-white/10 h-20">
           <div className="flex items-center gap-3 overflow-hidden">
             <svg
-              className="w-16 h-6 text-white fill-current shrink-0"
+              className="w-16 h-6 text-white fill-current shrink-0 filter drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]"
               viewBox="0 0 24 24"
             >
               <path d="M21 6.5c-2.4 1.6-6.1 3.8-9 5.2-2.3 1.1-4.7 2.1-7.1 2.9-.6.2-1.2.4-1.9.4-.3 0-.6 0-.8-.2-.3-.2-.4-.5-.4-.9 0-1.1.7-2.7 1.8-4.4.9-1.4 2.1-2.9 3.5-4.2.3-.3.8-.4 1.1-.2.3.2.4.6.2 1-.7 1.4-1.4 3.1-1.7 4.5.7-.2 1.5-.6 2.4-1.1 3.2-1.8 7-4.1 10.4-5.6.8-.4 1.7-.8 2.5-.9.4 0 .7.1.8.4.1.3 0 .7-.5 1.1z" />
@@ -139,7 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className={cn(
                   'flex items-center gap-3 px-3 py-3 rounded-xl transition-all group relative',
                   isActive
-                    ? 'bg-primary/10 border border-primary/30 text-white'
+                    ? 'bg-primary/10 border border-primary/20 text-white shadow-[0_0_15px_rgba(255,255,255,0.06)]'
                     : 'text-white/50 hover:text-white hover:bg-white/5 border border-transparent',
                 )}
               >
@@ -150,7 +150,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </span>
                 )}
                 {isActive && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-nikeOrange rounded-r-full" />
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
                 )}
               </Link>
             )
@@ -158,9 +158,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
 
         {/* User info & logout */}
-        <div className="p-3 border-t border-white/5 space-y-2">
+        <div className="p-3 border-t border-white/10 space-y-2">
           {!collapsed && user && (
-            <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/5">
+            <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/5 border border-white/5">
               {roleIcon}
               <div className="overflow-hidden flex-1">
                 <div className="text-sm font-semibold text-white/90 truncate">

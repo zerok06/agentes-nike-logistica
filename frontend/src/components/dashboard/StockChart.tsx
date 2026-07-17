@@ -51,13 +51,36 @@ export const StockChart: React.FC = () => {
       })).filter(item => item.displayValue > 0)
     : []
 
+  const getCategoryColor = (name: string): string => {
+    const nameLower = name.toLowerCase()
+    if (nameLower.includes('fútbol') || nameLower.includes('futbol') || nameLower.includes('football')) {
+      return '#ffffff' // stark white for football
+    } else if (nameLower.includes('lifestyle') || nameLower.includes('moda') || nameLower.includes('urban')) {
+      return '#94a3b8' // slate silver for lifestyle
+    } else if (nameLower.includes('running') || nameLower.includes('correr') || nameLower.includes('entrenamiento')) {
+      return '#475569' // dark gray for running
+    }
+    return '#cbd5e1' // default light gray
+  }
+
   useEffect(() => {
     setLoading(true)
     metricsService.getStockByWarehouse(filters.warehouseId)
       .then((res) => {
-        setData(res)
-        if (res && res.length > 0) {
-          setActiveWarehouse(res[0])
+        const formattedData = res.map((wh) => ({
+          ...wh,
+          breakdown: (wh.breakdown || []).map((item) => ({
+            ...item,
+            color: getCategoryColor(item.name)
+          }))
+        }))
+        setData(formattedData)
+        if (formattedData.length > 0) {
+          setActiveWarehouse((prev) => {
+            if (!prev) return formattedData[0]
+            const match = formattedData.find(w => w.name === prev.name)
+            return match || formattedData[0]
+          })
         } else {
           setActiveWarehouse(null)
         }
@@ -74,8 +97,8 @@ export const StockChart: React.FC = () => {
     return (
       <Card
         title="Análisis Operativo Multi-Sede - Logística Nike"
-        icon={<Package className="w-6 h-6 text-[#ff7a00] filter drop-shadow-[0_0_8px_rgba(255,122,0,0.6)]" />}
-        className="bg-gradient-to-b from-[#141418] to-[#0c0c0e] border border-white/10 rounded-3xl p-6 lg:p-8 shadow-[0_20px_40px_rgba(0,0,0,0.8)] hover:shadow-orange-500/5 transition-all duration-500 hover:scale-[1.002] w-full"
+        icon={<Package className="w-6 h-6 text-white filter drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]" />}
+        className="w-full"
       >
         <p className="text-sm text-white/30 text-center py-8">No hay datos de stock disponibles.</p>
       </Card>
@@ -85,8 +108,8 @@ export const StockChart: React.FC = () => {
   return (
     <Card
       title="Análisis Operativo Multi-Sede - Logística Nike"
-      icon={<Package className="w-6 h-6 text-[#ff7a00] filter drop-shadow-[0_0_8px_rgba(255,122,0,0.6)]" />}
-      className="bg-gradient-to-b from-[#141418] to-[#0c0c0e] border border-white/10 rounded-3xl p-6 lg:p-8 shadow-[0_20px_40px_rgba(0,0,0,0.8)] hover:shadow-orange-500/5 transition-all duration-500 hover:scale-[1.002] w-full perspective-[1200px]"
+      icon={<Package className="w-6 h-6 text-white filter drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]" />}
+      className="w-full perspective-[1200px]"
     >
       <div className="text-xs text-white/40 -mt-4 mb-6 italic">
         Interactúa sobre las barras de la izquierda para desplegar el desglose estructural de cada almacén.
@@ -98,10 +121,10 @@ export const StockChart: React.FC = () => {
         {/* Columna Izquierda: Gráfico de Barras Verticales (7 columnas) */}
         <div className="lg:col-span-7 bg-[#121215]/80 backdrop-blur-md rounded-3xl p-6 border-t border-white/15 border-x border-white/10 border-b border-black/40 relative flex flex-col justify-between shadow-[0_15px_35px_rgba(0,0,0,0.6)] transform [transform-style:preserve-3d] hover:rotate-x-[1.5deg] hover:rotate-y-[-1.5deg] hover:border-white/25 transition-all duration-500 ease-out">
           <div className="flex items-center justify-between mb-6">
-            <span className="text-xs font-mono text-[#ff7a00] uppercase tracking-widest flex items-center gap-2">
-              <Layers className="w-4 h-4 text-[#ff7a00]" /> Comparativa de Stock por Sede
+            <span className="text-xs font-mono text-white uppercase tracking-widest flex items-center gap-2">
+              <Layers className="w-4 h-4 text-white/60" /> Comparativa de Stock por Sede
             </span>
-            <span className="text-[10px] text-[#ff7a00] bg-[#ff7a00]/10 border border-[#ff7a00]/20 px-2.5 py-1 rounded-full flex items-center gap-1 font-semibold">
+            <span className="text-[10px] text-white bg-white/10 border border-white/20 px-2.5 py-1 rounded-full flex items-center gap-1 font-semibold">
               Modo Interactivo <ArrowUpRight className="w-3 h-3" />
             </span>
           </div>
@@ -125,14 +148,14 @@ export const StockChart: React.FC = () => {
               >
                 <defs>
                   <linearGradient id="nikeOrangeGradient3d" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#c2410c" stopOpacity={0.95} />
-                    <stop offset="60%" stopColor="#ff7a00" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#f97316" stopOpacity={1} />
+                    <stop offset="0%" stopColor="#4b5563" stopOpacity={0.95} />
+                    <stop offset="60%" stopColor="#ffffff" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#e5e7eb" stopOpacity={1} />
                   </linearGradient>
                   <linearGradient id="nikeRedGradient3d" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#881337" stopOpacity={0.95} />
+                    <stop offset="0%" stopColor="#991b1b" stopOpacity={0.95} />
                     <stop offset="60%" stopColor="#ef4444" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#dc2626" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#f87171" stopOpacity={1} />
                   </linearGradient>
                   <filter id="bar3DShadow" x="-10%" y="-10%" width="120%" height="120%">
                     <feDropShadow dx="3" dy="2" stdDeviation="3" floodColor="#000000" floodOpacity="0.7" />
@@ -142,7 +165,7 @@ export const StockChart: React.FC = () => {
                 <XAxis type="number" stroke="rgba(255,255,255,0.4)" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis dataKey="name" type="category" stroke="rgba(255,255,255,0.9)" fontSize={13} fontWeight={600} tickLine={false} axisLine={false} width={100} />
                 <Tooltip
-                  cursor={{ fill: 'rgba(255, 122, 0, 0.04)' }}
+                  cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }}
                   content={<CustomTooltip />}
                 />
                 <Bar dataKey="normal" name="Stock Normal" fill="url(#nikeOrangeGradient3d)" stackId="a" filter="url(#bar3DShadow)" barSize={24} />
@@ -152,22 +175,22 @@ export const StockChart: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-center gap-8 text-xs text-slate-400 pt-4 border-t border-white/5 mt-4">
-            <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-gradient-to-r from-orange-600 to-orange-500 shadow-[0_0_8px_#f97316]" /> Stock Normal</span>
-            <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-gradient-to-r from-red-800 to-red-500 shadow-[0_0_8px_#ef4444]" /> Stock Crítico</span>
+            <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-gradient-to-r from-gray-300 to-white shadow-[0_0_8px_rgba(255,255,255,0.4)]" /> Stock Normal</span>
+            <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-gradient-to-r from-red-800 to-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" /> Stock Crítico</span>
           </div>
         </div>
 
         {/* Columna Derecha: Gráfico Circular Dinámico (5 columnas) */}
         <div className="lg:col-span-5 bg-[#121215]/80 backdrop-blur-md rounded-3xl p-6 border-t border-white/15 border-x border-white/10 border-b border-black/40 relative flex flex-col justify-between shadow-[0_15px_35px_rgba(0,0,0,0.6)] transform [transform-style:preserve-3d] hover:rotate-x-[1.5deg] hover:rotate-y-[1.5deg] hover:border-white/25 transition-all duration-500 ease-out">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-            <span className="text-xs font-mono text-[#ff7a00] uppercase tracking-widest flex items-center gap-2">
-              <PieIcon className="w-4 h-4 text-[#ff7a00]" /> Desglose por Categoría
+            <span className="text-xs font-mono text-white uppercase tracking-widest flex items-center gap-2">
+              <PieIcon className="w-4 h-4 text-white/60" /> Desglose por Categoría
             </span>
             <div className="flex items-center gap-2.5">
               <div className="flex bg-black/40 p-1 rounded-xl border border-white/5 gap-0.5">
                 <button
                   onClick={() => setChartMode('total')}
-                  className={`px-2.5 py-0.5 text-[9px] font-extrabold rounded-lg transition-all ${chartMode === 'total' ? 'bg-[#ff7a00] text-white shadow-md' : 'text-white/40 hover:text-white/80'}`}
+                  className={`px-2.5 py-0.5 text-[9px] font-extrabold rounded-lg transition-all ${chartMode === 'total' ? 'bg-white text-black shadow-md' : 'text-white/40 hover:text-white/80'}`}
                 >
                   Total
                 </button>
@@ -178,7 +201,7 @@ export const StockChart: React.FC = () => {
                   Crítico
                 </button>
               </div>
-              <span className="text-[10px] font-bold text-white bg-[#ff7a00]/10 border border-[#ff7a00]/20 px-2 py-0.5 rounded-lg">
+              <span className="text-[10px] font-bold text-white bg-white/10 border border-white/20 px-2 py-0.5 rounded-lg">
                 {activeWarehouse.name}
               </span>
             </div>
@@ -225,17 +248,17 @@ export const StockChart: React.FC = () => {
               return (
                 <div
                   key={idx}
-                  className={`bg-[#0e0e11] hover:bg-[#121215] p-3 rounded-2xl border border-white/5 shadow-md transition-all duration-300 hover:-translate-y-0.5 group cursor-pointer ${
+                  className={`bg-white/[0.02] hover:bg-white/[0.06] p-3 rounded-2xl border border-white/5 shadow-md transition-all duration-300 hover:-translate-y-0.5 group cursor-pointer ${
                     chartMode === 'critical' 
                       ? (hasCritical ? 'hover:border-red-500/40 border-red-500/20 shadow-[0_0_12px_rgba(239,68,68,0.1)]' : 'opacity-40') 
-                      : 'hover:border-[#ff7a00]/30'
+                      : 'hover:border-white/30'
                   }`}
                 >
                   <div className="text-[10px] font-semibold text-white/50 flex items-center justify-center gap-1.5 uppercase tracking-wider truncate">
                     <span className="w-1.5 h-1.5 rounded-full scale-100 group-hover:scale-125 transition-transform duration-300" style={{ backgroundColor: item.color }} />
                     {item.name}
                   </div>
-                  <div className="text-sm font-black text-white mt-1.5 transition-colors group-hover:text-[#ff7a00]">
+                  <div className="text-sm font-black text-white mt-1.5 transition-colors group-hover:text-white">
                     {chartMode === 'critical' ? `${item.critical} prod.` : `${item.value} und`}
                   </div>
                   {chartMode === 'total' && hasCritical && (

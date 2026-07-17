@@ -8,6 +8,8 @@ import { StockChart } from '../../components/dashboard/StockChart'
 import { AlertsPanel } from '../../components/dashboard/AlertsPanel'
 import { ShipmentDonut } from '../../components/dashboard/ShipmentDonut'
 import { DashboardFilterProvider } from '../../context/DashboardFilterContext'
+import { WarehousePerformanceTable } from '../../components/dashboard/WarehousePerformanceTable'
+import { ShipmentRoutesTable } from '../../components/dashboard/ShipmentRoutesTable'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -104,6 +106,15 @@ const DashboardContent: React.FC = () => {
       >
         <AlertsPanel />
         <ShipmentDonut />
+      </motion.div>
+
+      {/* Fila 4: Rendimiento de Sedes y Rutas de Despacho */}
+      <motion.div
+        variants={sectionVariants}
+        className="grid grid-cols-1 xl:grid-cols-2 gap-6"
+      >
+        <WarehousePerformanceTable />
+        <ShipmentRoutesTable />
       </motion.div>
     </motion.div>
   )

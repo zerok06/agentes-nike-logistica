@@ -26,29 +26,29 @@ export const TrendChart: React.FC = () => {
 
   return (
     <Card
-      title={`Movimientos (${filters.timeRange}d)`}
-      icon={<Activity className="w-5 h-5 text-nikeOrange" />}
+      title={`Movimientos de Stock (${filters.timeRange}d)`}
+      icon={<Activity className="w-5 h-5 text-white" />}
       className="lg:col-span-2"
     >
       <ResponsiveContainer width="100%" height={300}>
         <AreaChart data={data}>
           <defs>
             <linearGradient id="colorEntradas" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#FA5400" stopOpacity={0.8} />
-              <stop offset="95%" stopColor="#FA5400" stopOpacity={0.05} />
+              <stop offset="5%" stopColor="#ffffff" stopOpacity={0.4} />
+              <stop offset="95%" stopColor="#ffffff" stopOpacity={0.01} />
             </linearGradient>
             <linearGradient id="colorSalidas" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#00C49F" stopOpacity={0.8} />
-              <stop offset="95%" stopColor="#00C49F" stopOpacity={0.05} />
+              <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#94a3b8" stopOpacity={0.01} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
           <XAxis dataKey="date" stroke="rgba(255,255,255,0.4)" fontSize={10} tickLine={false} />
           <YAxis stroke="rgba(255,255,255,0.4)" fontSize={12} tickLine={false} />
-          <Tooltip contentStyle={{ background: '#1C1C1E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '12px', color: 'rgba(255,255,255,0.9)' }} />
+          <Tooltip contentStyle={{ background: '#09090b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '12px', color: 'rgba(255,255,255,0.9)' }} />
           <Legend wrapperStyle={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }} />
-          <Area type="monotone" dataKey="entradas" stroke="#FA5400" strokeWidth={2} fill="url(#colorEntradas)" name="Entradas" />
-          <Area type="monotone" dataKey="salidas" stroke="#00C49F" strokeWidth={2} fill="url(#colorSalidas)" name="Salidas" />
+          <Area type="monotone" dataKey="entradas" stroke="#ffffff" strokeWidth={2.5} fill="url(#colorEntradas)" name="Entradas" />
+          <Area type="monotone" dataKey="salidas" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 5" fill="url(#colorSalidas)" name="Salidas" />
         </AreaChart>
       </ResponsiveContainer>
     </Card>

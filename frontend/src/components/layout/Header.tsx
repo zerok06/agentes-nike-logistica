@@ -28,7 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
         : 'Operador'
 
   return (
-    <header className="sticky top-0 z-30 glass-panel border-b border-white/5 px-4 md:px-6 h-20 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-30 glass-panel border-b border-white/10 px-4 md:px-6 h-20 flex items-center justify-between gap-4">
       <div className="flex items-center gap-4">
         {isMobile && (
           <button
@@ -45,7 +45,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       <div className="flex items-center gap-2 md:gap-3">
         {/* Connection indicator */}
-        <div className="hidden md:flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5 text-xs text-white/70">
+        <div className="hidden md:flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10 text-xs text-white/70">
           {wsConnected ? (
             <Wifi className="w-4 h-4 text-green-500" />
           ) : wsFallback ? (
@@ -63,8 +63,8 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Role badge */}
-        <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5 text-xs text-white/70">
-          <ShieldAlert className="w-4 h-4 text-nikeOrange" />
+        <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10 text-xs text-white/70">
+          <ShieldAlert className="w-4 h-4 text-white" />
           <span className="hidden md:inline">
             Rol: <strong className="text-white uppercase tracking-wider">{roleLabel}</strong>
           </span>

@@ -62,15 +62,24 @@ export const RegisterPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+    <div className="min-h-screen bg-command-center flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Background command center tactical canvas */}
+      <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute inset-0 dot-matrix" />
+        <div className="absolute inset-0 tech-grid" />
+        {/* Spotlights: Stark White top-right, Metallic Silver bottom-left */}
+        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-white/4 rounded-full blur-[150px]" />
+        <div className="absolute -bottom-40 -left-40 w-[750px] h-[750px] bg-slate-500/4 rounded-full blur-[180px]" />
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
+        className="w-full max-w-md relative z-10"
       >
         <div className="flex items-center gap-3 mb-8">
-          <svg className="w-16 h-6 text-white fill-current" viewBox="0 0 24 24">
+          <svg className="w-16 h-6 text-white fill-current filter drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]" viewBox="0 0 24 24">
             <path d="M21 6.5c-2.4 1.6-6.1 3.8-9 5.2-2.3 1.1-4.7 2.1-7.1 2.9-.6.2-1.2.4-1.9.4-.3 0-.6 0-.8-.2-.3-.2-.4-.5-.4-.9 0-1.1.7-2.7 1.8-4.4.9-1.4 2.1-2.9 3.5-4.2.3-.3.8-.4 1.1-.2.3.2.4.6.2 1-.7 1.4-1.4 3.1-1.7 4.5.7-.2 1.5-.6 2.4-1.1 3.2-1.8 7-4.1 10.4-5.6.8-.4 1.7-.8 2.5-.9.4 0 .7.1.8.4.1.3 0 .7-.5 1.1z" />
           </svg>
           <span className="text-xl font-bold tracking-wider uppercase text-white/95">
