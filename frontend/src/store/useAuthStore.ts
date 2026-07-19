@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { authService } from '../services/auth.service'
+import { usePermissionStore } from './usePermissionStore'
 import type { User, LoginCredentials, RegisterData, UserRole } from '../types/auth'
 
 interface AuthState {
@@ -39,6 +40,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
         isLoading: false,
       })
+      usePermissionStore.getState().loadPermissions()
     } catch (err: any) {
       const message = err.response?.data?.detail || 'Error al iniciar sesión'
       set({ isLoading: false, error: message })
@@ -60,6 +62,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
         isLoading: false,
       })
+      usePermissionStore.getState().loadPermissions()
     } catch (err: any) {
       const message = err.response?.data?.detail || 'Error al registrar usuario'
       set({ isLoading: false, error: message })
@@ -72,6 +75,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
     localStorage.removeItem('user')
+    usePermissionStore.getState().clearPermissions()
     set({
       user: null,
       token: null,
@@ -94,6 +98,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           refreshToken,
           isAuthenticated: true,
         })
+        usePermissionStore.getState().loadPermissions()
       } catch {
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')

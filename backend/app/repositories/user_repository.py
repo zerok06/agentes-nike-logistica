@@ -1,3 +1,4 @@
+from typing import Any
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -56,3 +57,21 @@ class UserRepository:
         await self.session.execute(
             update(User).where(User.user_id == user_id).values(password_hash=password_hash)
         )
+
+    async def update(self, user_id: int, **kwargs: Any) -> User | None:
+        user = await self.get_by_id(user_id)
+        if user is None:
+            return None
+        for key, value in kwargs.items():
+            if value is not None and hasattr(user, key):
+                setattr(user, key, value)
+        await self.session.flush()
+        return user
+
+    async def delete(self, user_id: int) -> bool:
+        user = await self.get_by_id(user_id)
+        if user is None:
+            return False
+        await self.session.delete(user)
+        await self.session.flush()
+        return True

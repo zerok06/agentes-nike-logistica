@@ -6,6 +6,7 @@ from app.models.inventory import (
 )
 from app.models.audit import AuditLog
 from app.models.user import User
+from app.models.permission import Permission, RolePermission, UserPermission
 
 __all__ = [
     "Base",
@@ -27,4 +28,7 @@ __all__ = [
     "Shipment",
     "AuditLog",
     "User",
+    "Permission",
+    "RolePermission",
+    "UserPermission",
 ]

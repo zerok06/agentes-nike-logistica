@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { User, Lock, Bell, Palette } from 'lucide-react'
+import { User, Lock, Bell, Palette, Loader2 } from 'lucide-react'
 import { Card } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Switch } from '../../components/ui/switch'
 import { useAuthStore } from '../../store/useAuthStore'
+import { authService } from '../../services/auth.service'
 import { toast } from 'sonner'
 
 export const SettingsPage: React.FC = () => {
@@ -14,6 +15,7 @@ export const SettingsPage: React.FC = () => {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [changingPw, setChangingPw] = useState(false)
   const [notifications, setNotifications] = useState({
     stockCritical: true,
     transfers: true,
@@ -27,6 +29,36 @@ export const SettingsPage: React.FC = () => {
       : user?.role === 'supervisor'
         ? 'Supervisor'
         : 'Operador'
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword) {
+      toast.error('Completa todos los campos')
+      return
+    }
+    if (newPassword.length < 6) {
+      toast.error('La nueva contraseña debe tener al menos 6 caracteres')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Las contraseñas no coinciden')
+      return
+    }
+    setChangingPw(true)
+    try {
+      await authService.changeMyPassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+      })
+      toast.success('Contraseña actualizada correctamente')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Error al cambiar contraseña')
+    } finally {
+      setChangingPw(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -102,7 +134,10 @@ export const SettingsPage: React.FC = () => {
               />
             </div>
           </div>
-          <Button onClick={() => toast.success('Contraseña actualizada correctamente')}>Actualizar Contraseña</Button>
+          <Button onClick={handleChangePassword} loading={changingPw}>
+            {changingPw ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Lock className="w-4 h-4 mr-2" />}
+            Actualizar Contraseña
+          </Button>
         </div>
       </Card>
 

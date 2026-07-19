@@ -53,6 +53,23 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
 
+class UserUpdate(BaseModel):
+    email: EmailStr | None = None
+    username: str | None = Field(None, min_length=3, max_length=100)
+    role: UserRole | None = None
+    warehouse_id: int | None = None
+    is_active: bool | None = None
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=6, max_length=128)
+
+
+class ResetPasswordRequest(BaseModel):
+    new_password: str = Field(..., min_length=6, max_length=128)
+
+
 class TokenData(BaseModel):
     user_id: int | None = None
     email: str | None = None

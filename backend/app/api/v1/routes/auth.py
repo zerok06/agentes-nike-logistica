@@ -11,15 +11,19 @@ from app.core.security import (
 )
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
-from app.api.deps.auth import get_current_user, require_roles
+from app.repositories.audit_repository import AuditRepository
+from app.api.deps.auth import get_current_user, require_roles, require_permission
 from app.schemas.auth import (
     AuthenticatedUser,
+    ChangePasswordRequest,
     RefreshTokenRequest,
+    ResetPasswordRequest,
     TokenResponse,
     UserCreate,
     UserLogin,
     UserResponse,
     UserRole,
+    UserUpdate,
 )
 
 router = APIRouter(
@@ -167,8 +171,155 @@ async def logout(
 @router.get("/users", response_model=list[UserResponse])
 async def list_users(
     db: AsyncSession = Depends(get_central_db),
-    current_user: AuthenticatedUser = Depends(require_roles(UserRole.ADMIN)),
+    current_user: AuthenticatedUser = Depends(require_permission("users", "view")),
 ) -> list[UserResponse]:
     user_repo = UserRepository(db)
     users = await user_repo.list_all()
     return [_user_to_response(u) for u in users]
+
+
+@router.get("/users/{user_id}", response_model=UserResponse)
+async def get_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_central_db),
+    current_user: AuthenticatedUser = Depends(require_permission("users", "view")),
+) -> UserResponse:
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_id(user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+    return _user_to_response(user)
+
+
+@router.patch("/users/{user_id}", response_model=UserResponse)
+async def update_user(
+    user_id: int,
+    data: UserUpdate,
+    db: AsyncSession = Depends(get_central_db),
+    current_user: AuthenticatedUser = Depends(require_permission("users", "edit")),
+) -> UserResponse:
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_id(user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    update_kwargs = data.model_dump(exclude_none=True)
+    if "role" in update_kwargs:
+        update_kwargs["role"] = update_kwargs["role"].value if update_kwargs["role"] else None
+
+    if "email" in update_kwargs and update_kwargs["email"] != user.email:
+        existing = await user_repo.get_by_email(update_kwargs["email"])
+        if existing:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email ya en uso")
+
+    if "username" in update_kwargs and update_kwargs["username"] != user.username:
+        existing = await user_repo.get_by_username(update_kwargs["username"])
+        if existing:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username ya en uso")
+
+    updated = await user_repo.update(user_id, **update_kwargs)
+    await db.commit()
+    return _user_to_response(updated)
+
+
+@router.patch("/users/{user_id}/toggle-active", response_model=UserResponse)
+async def toggle_user_active(
+    user_id: int,
+    db: AsyncSession = Depends(get_central_db),
+    current_user: AuthenticatedUser = Depends(require_permission("users", "toggle-active")),
+) -> UserResponse:
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_id(user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    new_active = not user.is_active
+    await user_repo.set_active(user_id, new_active)
+    await db.commit()
+
+    audit_repo = AuditRepository(db)
+    await audit_repo.create_log(
+        action="USER_TOGGLE_ACTIVE",
+        entity_name="user",
+        entity_id=str(user_id),
+        details={"user_email": current_user.email, "target_user": user.email, "new_active": new_active},
+    )
+    await db.commit()
+
+    user.is_active = new_active
+    return _user_to_response(user)
+
+
+@router.delete("/users/{user_id}", response_model=dict[str, str])
+async def delete_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_central_db),
+    current_user: AuthenticatedUser = Depends(require_permission("users", "delete")),
+) -> dict[str, str]:
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_id(user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    await user_repo.delete(user_id)
+    await db.commit()
+
+    audit_repo = AuditRepository(db)
+    await audit_repo.create_log(
+        action="USER_DELETE",
+        entity_name="user",
+        entity_id=str(user_id),
+        details={"user_email": current_user.email, "target_user": user.email},
+    )
+    await db.commit()
+    return {"message": f"Usuario {user.email} eliminado correctamente"}
+
+
+@router.post("/change-password", response_model=dict[str, str])
+async def change_my_password(
+    data: ChangePasswordRequest,
+    db: AsyncSession = Depends(get_central_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> dict[str, str]:
+    if current_user.is_demo:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuarios demo no pueden cambiar contraseña")
+
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_id(int(current_user.subject))
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    if not verify_password(data.current_password, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Contraseña actual incorrecta")
+
+    new_hash = hash_password(data.new_password)
+    await user_repo.update_password(user.user_id, new_hash)
+    await db.commit()
+    return {"message": "Contraseña actualizada correctamente"}
+
+
+@router.post("/users/{user_id}/reset-password", response_model=dict[str, str])
+async def reset_user_password(
+    user_id: int,
+    data: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_central_db),
+    current_user: AuthenticatedUser = Depends(require_permission("users", "reset-password")),
+) -> dict[str, str]:
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_id(user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    new_hash = hash_password(data.new_password)
+    await user_repo.update_password(user_id, new_hash)
+    await db.commit()
+
+    audit_repo = AuditRepository(db)
+    await audit_repo.create_log(
+        action="USER_RESET_PASSWORD",
+        entity_name="user",
+        entity_id=str(user_id),
+        details={"user_email": current_user.email, "target_user": user.email},
+    )
+    await db.commit()
+    return {"message": "Contraseña restablecida correctamente"}

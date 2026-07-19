@@ -5,6 +5,7 @@ export interface User {
   email: string
   username: string
   role: UserRole
+  warehouse_id?: number | null
   is_active: boolean
   created_at: string | null
 }
@@ -19,6 +20,15 @@ export interface RegisterData {
   username: string
   password: string
   role: UserRole
+  warehouse_id?: number | null
+}
+
+export interface UserUpdateData {
+  email?: string
+  username?: string
+  role?: UserRole
+  warehouse_id?: number | null
+  is_active?: boolean
 }
 
 export interface TokenResponse {
@@ -26,4 +36,27 @@ export interface TokenResponse {
   refresh_token: string
   token_type: string
   user: User
+}
+
+export interface Permission {
+  permission_id: number
+  module: string
+  action: string
+  label: string
+  description: string | null
+}
+
+export interface UserPermissionsResponse {
+  user_id: number
+  permissions: string[]
+}
+
+export interface SetUserPermissionRequest {
+  permission_id: number
+  granted: boolean
+}
+
+export interface ChangePasswordData {
+  current_password: string
+  new_password: string
 }

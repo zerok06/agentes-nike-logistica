@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react'
 import { useAuthStore } from '../../store/useAuthStore'
+import { usePermissionStore } from '../../store/usePermissionStore'
 import { NAV_ITEMS } from '../../utils/constants'
 import { cn } from '../../lib/utils'
 
@@ -48,10 +49,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout, hasRole } = useAuthStore()
+  const { hasPermission } = usePermissionStore()
 
-  const visibleItems = NAV_ITEMS.filter((item) =>
-    hasRole(...item.roles),
-  )
+  const visibleItems = NAV_ITEMS.filter((item) => {
+    const hasRequiredRole = hasRole(...item.roles)
+    const hasRequiredPermission = !item.permissions || item.permissions.some((p) => {
+      const [mod, act] = p.split('.')
+      return hasPermission(mod, act)
+    })
+    return hasRequiredRole && hasRequiredPermission
+  })
 
   const roleIcon =
     user?.role === 'admin' ? (
