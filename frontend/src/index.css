@@ -1,3 +1,5 @@
+@import 'leaflet/dist/leaflet.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -30,6 +32,13 @@
 @layer base {
   * {
     @apply border-border;
+    outline: none !important;
+  }
+  *:focus {
+    outline: none !important;
+  }
+  *:focus-visible {
+    outline: none !important;
   }
   body {
     @apply bg-background text-foreground selection:bg-white selection:text-black antialiased;
@@ -183,5 +192,35 @@
 select option {
   background-color: #121215 !important;
   color: #ffffff !important;
+}
+
+/* Leaflet dark theme overrides */
+.leaflet-popup-content-wrapper {
+  background: rgba(18, 18, 21, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
+  color: #fff !important;
+  font-family: inherit !important;
+}
+.leaflet-popup-tip {
+  background: rgba(18, 18, 21, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+.leaflet-popup-close-button {
+  display: none !important;
+}
+.leaflet-popup-content {
+  margin: 8px 12px !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+}
+.leaflet-container {
+  font-family: inherit !important;
+  background: transparent !important;
+}
+.leaflet-control-zoom {
+  display: none !important;
 }
 

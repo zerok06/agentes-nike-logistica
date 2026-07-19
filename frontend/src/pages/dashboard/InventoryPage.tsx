@@ -57,6 +57,7 @@ import { BarcodeLabel } from '../../components/products/BarcodeLabel'
 import { LabelPrintPanel } from '../../components/products/LabelPrintPanel'
 import { WarehouseDistributionForm } from '../../components/products/WarehouseDistributionForm'
 import { toast } from 'sonner'
+import TrackingMap from '../../components/tracking/TrackingMap'
 import { useAuthStore } from '../../store/useAuthStore'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { inventoryService } from '../../services/inventory.service'
@@ -267,8 +268,8 @@ export const InventoryPage: React.FC = () => {
         seen.add(item.warehouse_name)
         return true
       })
-      .map((item) => ({
-        id: item.warehouse_name === 'Almacén Central Lima' ? 1 : 2,
+      .map((item, index) => ({
+        id: index + 1,
         name: item.warehouse_name,
         city: item.city,
       }))
@@ -696,7 +697,7 @@ export const InventoryPage: React.FC = () => {
 
       {/* ============ ADD PRODUCT DIALOG ============ */}
       <Dialog open={addProductOpen} onOpenChange={setAddProductOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent width="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Registrar Producto</DialogTitle>
           </DialogHeader>
@@ -853,9 +854,9 @@ export const InventoryPage: React.FC = () => {
           setTransferSuccess(null)
         }
       }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent width="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Traslado Rápido de Stock</DialogTitle>
+            <DialogTitle>Traslado Rapido de Stock</DialogTitle>
           </DialogHeader>
 
           {!hasRole('admin', 'supervisor') ? (
@@ -869,81 +870,85 @@ export const InventoryPage: React.FC = () => {
               </div>
             </div>
           ) : (
-            <form onSubmit={handleTransfer} className="flex flex-col gap-4">
-              <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-1">
-                {/* Producto selector */}
-                <div className="flex flex-col gap-1.5">
-                  <Label>Producto</Label>
-                  <Select
-                    value={transferProduct}
-                    onValueChange={(v) => {
-                      setTransferProduct(v)
-                      setFromWarehouse('')
-                      setToWarehouse('')
-                      setTransferQty(5)
-                      setTransferError(null)
-                      setTransferSuccess(null)
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona Producto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {transferProducts.map((p) => (
-                        <SelectItem key={p.sku} value={String(p.inventory_id)}>
-                          {p.product_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+            <form onSubmit={handleTransfer}>
+              <div className="grid grid-cols-2 gap-6">
+                {/* Left column - form */}
+                <div className="space-y-5">
+                  {/* Producto selector */}
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Producto</Label>
+                    <Select
+                      value={transferProduct}
+                      onValueChange={(v) => {
+                        setTransferProduct(v)
+                        setFromWarehouse('')
+                        setToWarehouse('')
+                        setTransferQty(5)
+                        setTransferError(null)
+                        setTransferSuccess(null)
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona Producto" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {transferProducts.map((p) => (
+                          <SelectItem key={p.sku} value={String(p.inventory_id)}>
+                            {p.product_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Stock preview for selected product */}
-                {selectedTransferStock && (
-                  <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
-                    <div className="px-4 py-2 border-b border-white/10 bg-white/[0.02]">
-                      <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">
-                        Stock por almacén
-                      </p>
-                    </div>
-                    <div className="p-3 space-y-2">
-                      {selectedTransferStock.warehouses.map((w, i) => {
-                        const max = w.max_stock || 500
-                        const percent = Math.min(100, (w.stock_qty / max) * 100)
-                        const state = w.is_critical ? 'critical' : w.stock_qty <= w.min_stock * 1.5 ? 'low' : 'normal'
-                        return (
-                          <div key={i} className="flex items-center gap-3">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-white/70 truncate">{w.warehouse_name}</span>
-                                <span className={`font-bold shrink-0 ml-2 ${w.is_critical ? 'text-red-400' : state === 'low' ? 'text-yellow-400' : 'text-green-400'}`}>
-                                  {w.stock_qty} uds
-                                </span>
+                  {/* Stock preview for selected product */}
+                  {selectedTransferStock && (
+                    <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+                      <div className="px-4 py-2 border-b border-white/10 bg-white/[0.02]">
+                        <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">
+                          Stock por almacen
+                        </p>
+                      </div>
+                      <div className="p-3 space-y-2">
+                        {selectedTransferStock.warehouses.map((w, i) => {
+                          const max = w.max_stock || 500
+                          const percent = Math.min(100, (w.stock_qty / max) * 100)
+                          const state = w.is_critical ? 'critical' : w.stock_qty <= w.min_stock * 1.5 ? 'low' : 'normal'
+                          return (
+                            <div key={i} className="flex items-center gap-3">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="text-white/70 truncate">{w.warehouse_name}</span>
+                                  <span className={`font-bold shrink-0 ml-2 ${w.is_critical ? 'text-red-400' : state === 'low' ? 'text-yellow-400' : 'text-green-400'}`}>
+                                    {w.stock_qty} uds
+                                  </span>
+                                </div>
+                                <Progress value={percent} className="h-1 mt-1" indicatorClassName={
+                                  w.is_critical ? 'bg-red-500' : state === 'low' ? 'bg-yellow-500' : 'bg-green-500'
+                                } />
                               </div>
-                              <Progress value={percent} className="h-1 mt-1" indicatorClassName={
-                                w.is_critical ? 'bg-red-500' : state === 'low' ? 'bg-yellow-500' : 'bg-green-500'
-                              } />
                             </div>
-                          </div>
-                        )
-                      })}
-                      <div className="flex items-center justify-between border-t border-white/10 pt-2 mt-1">
-                        <span className="text-[10px] text-white/40 uppercase">Total</span>
-                        <span className="text-xs font-bold text-white/90">{selectedTransferStock.totalStock} uds</span>
+                          )
+                        })}
+                        <div className="flex items-center justify-between border-t border-white/10 pt-2 mt-1">
+                          <span className="text-[10px] text-white/40 uppercase">Total</span>
+                          <span className="text-xs font-bold text-white/90">{selectedTransferStock.totalStock} uds</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Origen - solo con stock */}
+                  {/* Origen */}
                   <div className="flex flex-col gap-1.5">
-                    <Label>Almacén Origen</Label>
+                    <Label>Almacen Origen</Label>
                     <Select
                       value={fromWarehouse}
                       onValueChange={(v) => {
                         setFromWarehouse(v)
-                        setTransferQty(5)
+                        const newMax = selectedTransferStock?.warehouses.find(
+                          w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === v
+                        )?.stock_qty || 0
+                        setTransferQty(Math.min(5, newMax))
                       }}
                       disabled={!selectedTransferStock}
                     >
@@ -970,7 +975,7 @@ export const InventoryPage: React.FC = () => {
 
                   {/* Destino */}
                   <div className="flex flex-col gap-1.5">
-                    <Label>Almacén Destino</Label>
+                    <Label>Almacen Destino</Label>
                     <Select
                       value={toWarehouse}
                       onValueChange={setToWarehouse}
@@ -990,108 +995,163 @@ export const InventoryPage: React.FC = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
 
-                {/* Cantidad */}
-                <div className="flex flex-col gap-1.5">
-                  <Label>
-                    Cantidad
-                    {fromWarehouse && (
-                      <span className="text-white/40 font-normal ml-2">
-                        (max: {selectedTransferStock?.warehouses.find(
-                          w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === fromWarehouse
-                        )?.stock_qty || 0} uds)
-                      </span>
-                    )}
-                  </Label>
+                  {/* Cantidad */}
+                  <div className="flex flex-col gap-1.5">
+                    <Label>
+                      Cantidad
+                      {fromWarehouse && (
+                        <span className="text-white/40 font-normal ml-2">
+                          (max: {selectedTransferStock?.warehouses.find(
+                            w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === fromWarehouse
+                          )?.stock_qty || 0} uds)
+                        </span>
+                      )}
+                    </Label>
                   <Input
                     type="number"
                     value={transferQty}
-                    onChange={(e) => setTransferQty(parseInt(e.target.value) || 0)}
+                    onChange={(e) => {
+                      const maxStock = selectedTransferStock?.warehouses.find(
+                        w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === fromWarehouse
+                      )?.stock_qty || 0
+                      const val = parseInt(e.target.value) || 1
+                      setTransferQty(Math.min(val, maxStock))
+                    }}
                     min={1}
                     max={selectedTransferStock?.warehouses.find(
                       w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === fromWarehouse
                     )?.stock_qty || 0}
                     disabled={!fromWarehouse}
                   />
+                  </div>
+
+                  {/* Warning for critical/low origin */}
+                  {fromWarehouse && (() => {
+                    const originWh = selectedTransferStock?.warehouses.find(
+                      w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === fromWarehouse
+                    )
+                    if (!originWh) return null
+                    if (originWh.is_critical) {
+                      return (
+                        <div className="flex items-start gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-xs font-bold text-red-400">Stock Critico</p>
+                            <p className="text-[10px] text-white/50 mt-0.5">
+                              Este almacen tiene {originWh.stock_qty} uds (minimo: {originWh.min_stock}). Puedes realizar el traslado igualmente.
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    }
+                    if (originWh.stock_qty <= originWh.min_stock * 1.5) {
+                      return (
+                        <div className="flex items-start gap-2 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+                          <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-xs font-bold text-yellow-400">Stock Bajo</p>
+                            <p className="text-[10px] text-white/50 mt-0.5">
+                              Stock por debajo del nivel optimo ({originWh.stock_qty}/{originWh.min_stock}).
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    }
+                    return null
+                  })()}
+
+                  {/* Flow indicator */}
+                  {fromWarehouse && toWarehouse && fromWarehouse !== toWarehouse && (
+                    <div className="flex items-center justify-center gap-3 py-2 px-4 rounded-xl bg-white/5 border border-white/5">
+                      <span className="text-xs text-white/60 font-medium">
+                        {warehouseOptions.find(w => String(w.id) === fromWarehouse)?.city || 'Origen'}
+                      </span>
+                      <ArrowRight className="w-4 h-4 text-nikeOrange" />
+                      <span className="text-xs text-white/60 font-medium">
+                        {warehouseOptions.find(w => String(w.id) === toWarehouse)?.city || 'Destino'}
+                      </span>
+                      <span className="text-xs text-white/40">·</span>
+                      <span className="text-xs text-nikeOrange font-bold">{transferQty} unidades</span>
+                    </div>
+                  )}
+
+                  {transferSuccess && (
+                    <div className="text-xs text-green-400 font-semibold bg-green-500/10 border border-green-500/20 p-3 rounded-xl flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 shrink-0" />
+                      {transferSuccess}
+                    </div>
+                  )}
+                  {transferError && (
+                    <div className="text-xs text-red-400 font-semibold bg-red-500/10 border border-red-500/20 p-3 rounded-xl flex items-center gap-2">
+                      <X className="w-4 h-4 shrink-0" />
+                      {transferError}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setTransferOpen(false)}
+                      className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-sm font-semibold transition-all"
+                    >
+                      Cancelar
+                    </button>
+                    <Button type="submit" className="flex-1 bg-nikeOrange hover:bg-nikeOrange/80 text-white">
+                      <ClipboardList className="w-4 h-4 mr-2" />
+                      Confirmar Traslado
+                    </Button>
+                  </div>
                 </div>
 
-                {/* Warning for critical/low origin */}
-                {fromWarehouse && (() => {
-                  const originWh = selectedTransferStock?.warehouses.find(
-                    w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === fromWarehouse
-                  )
-                  if (!originWh) return null
-                  if (originWh.is_critical) {
+                {/* Right column - tracking simulation */}
+                <div className="h-full min-h-[250px]">
+                  {fromWarehouse && toWarehouse && fromWarehouse !== toWarehouse ? (() => {
+                    const now = new Date()
+                    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+                    const trackingId = `TRK-${dateStr}-${String(Math.floor(1000 + Math.random() * 9000))}`
+                    const fromCity = warehouseOptions.find(w => String(w.id) === fromWarehouse)?.city || ''
+                    const toCity = warehouseOptions.find(w => String(w.id) === toWarehouse)?.city || ''
+                    const hasDistance = fromCity && toCity
+                    let estimatedDays = 3
+                    if (hasDistance) {
+                      const routes: Record<string, Record<string, number>> = {
+                        'Lima': { 'Arequipa': 5, 'Trujillo': 3, 'Cusco': 6, 'Piura': 4, 'Lima': 1 },
+                        'Arequipa': { 'Lima': 5, 'Trujillo': 6, 'Cusco': 3, 'Piura': 7 },
+                        'Trujillo': { 'Lima': 3, 'Arequipa': 6, 'Cusco': 5, 'Piura': 2 },
+                        'Cusco': { 'Lima': 6, 'Arequipa': 3, 'Trujillo': 5, 'Piura': 7 },
+                        'Piura': { 'Lima': 4, 'Arequipa': 7, 'Trujillo': 2, 'Cusco': 7 },
+                      }
+                      estimatedDays = routes[fromCity]?.[toCity] || 4
+                    }
+                    const eta = new Date(now.getTime() + estimatedDays * 24 * 60 * 60 * 1000)
+                    const etaStr = eta.toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })
+                    const progressPercent = 15 + Math.floor(Math.random() * 20)
+
                     return (
-                      <div className="flex items-start gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
-                        <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-xs font-bold text-red-400">Stock Crítico</p>
-                          <p className="text-[10px] text-white/50 mt-0.5">
-                            Este almacén tiene {originWh.stock_qty} uds (mínimo: {originWh.min_stock}). Puedes realizar el traslado igualmente.
-                          </p>
-                        </div>
-                      </div>
+                      <TrackingMap
+                        fromId={fromWarehouse}
+                        toId={toWarehouse}
+                        warehouses={selectedTransferStock?.warehouses || []}
+                        warehouseOptions={warehouseOptions}
+                        totalStock={selectedTransferStock?.totalStock || 0}
+                        transferQty={transferQty}
+                        trackingId={trackingId}
+                        estimatedDays={estimatedDays}
+                        etaStr={etaStr}
+                        progressPercent={progressPercent}
+                      />
                     )
-                  }
-                  if (originWh.stock_qty <= originWh.min_stock * 1.5) {
-                    return (
-                      <div className="flex items-start gap-2 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
-                        <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-xs font-bold text-yellow-400">Stock Bajo</p>
-                          <p className="text-[10px] text-white/50 mt-0.5">
-                            Stock por debajo del nivel óptimo ({originWh.stock_qty}/{originWh.min_stock}).
-                          </p>
-                        </div>
-                      </div>
-                    )
-                  }
-                  return null
-                })()}
-
-                {/* Flow indicator */}
-                {fromWarehouse && toWarehouse && fromWarehouse !== toWarehouse && (
-                  <div className="flex items-center justify-center gap-3 py-2 px-4 rounded-xl bg-white/5 border border-white/5">
-                    <span className="text-xs text-white/60 font-medium">
-                      {warehouseOptions.find(w => String(w.id) === fromWarehouse)?.city || 'Origen'}
-                    </span>
-                    <ArrowRight className="w-4 h-4 text-nikeOrange" />
-                    <span className="text-xs text-white/60 font-medium">
-                      {warehouseOptions.find(w => String(w.id) === toWarehouse)?.city || 'Destino'}
-                    </span>
-                    <span className="text-xs text-white/40">·</span>
-                    <span className="text-xs text-nikeOrange font-bold">{transferQty} unidades</span>
-                  </div>
-                )}
-
-                {transferSuccess && (
-                  <div className="text-xs text-green-400 font-semibold bg-green-500/10 border border-green-500/20 p-3 rounded-xl flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 shrink-0" />
-                    {transferSuccess}
-                  </div>
-                )}
-                {transferError && (
-                  <div className="text-xs text-red-400 font-semibold bg-red-500/10 border border-red-500/20 p-3 rounded-xl flex items-center gap-2">
-                    <X className="w-4 h-4 shrink-0" />
-                    {transferError}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setTransferOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-sm font-semibold transition-all"
-                >
-                  Cancelar
-                </button>
-                <Button type="submit" className="flex-1 bg-nikeOrange hover:bg-nikeOrange/80 text-white">
-                  <ClipboardList className="w-4 h-4 mr-2" />
-                  Confirmar Traslado
-                </Button>
+                  })() : (
+                    <div className="h-full rounded-xl bg-white/[0.02] border border-dashed border-white/10 flex flex-col items-center justify-center text-center p-6">
+                      <ArrowLeftRight className="w-8 h-8 text-white/20 mb-3" />
+                      <p className="text-xs text-white/30 font-medium">Simulacion de Traslado</p>
+                      <p className="text-[10px] text-white/20 mt-1 max-w-[180px]">
+                        Selecciona origen y destino en el formulario para ver la simulacion del traslado
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </form>
           )}
@@ -1478,173 +1538,238 @@ export const InventoryPage: React.FC = () => {
           setPtSuccess(null)
         }
       }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent width="max-w-4xl">
           <DialogHeader>
             <DialogTitle>
               Trasladar: {selectedProductStock?.product_name || 'Producto'}
             </DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleProductTransfer} className="flex flex-col gap-4">
-            <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-1">
-              {/* Product context */}
-              <div className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-3 border border-white/10">
-                <div>
-                  <p className="text-[10px] text-white/40 uppercase tracking-wider">SKU</p>
-                  <p className="font-mono text-xs font-bold text-white/90">{selectedProductStock?.sku}</p>
+          <form onSubmit={handleProductTransfer}>
+            <div className="grid grid-cols-2 gap-6">
+              {/* Left column - form */}
+              <div className="space-y-5">
+                {/* Product context */}
+                <div className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-3 border border-white/10">
+                  <div>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider">SKU</p>
+                    <p className="font-mono text-xs font-bold text-white/90">{selectedProductStock?.sku}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider">Stock Total</p>
+                    <p className="text-sm font-bold text-white/90">{selectedProductStock?.totalStock} uds</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-white/40 uppercase tracking-wider">Stock Total</p>
-                  <p className="text-sm font-bold text-white/90">{selectedProductStock?.totalStock} uds</p>
+
+                {/* Origin warehouse - only with stock */}
+                <div className="flex flex-col gap-1.5">
+                  <Label>Almacen Origen</Label>
+                  <Select value={ptOrigin} onValueChange={(v) => {
+                    setPtOrigin(v)
+                    setPtDestination('')
+                    const newMax = selectedProductStock?.warehouses.find(
+                      w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === v
+                    )?.stock_qty || 0
+                    setPtQty(Math.min(5, newMax))
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona origen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedProductStock?.warehouses
+                        .filter((w) => w.stock_qty > 0)
+                        .map((w) => {
+                          const whId = warehouseOptions.find(o => o.name === w.warehouse_name)?.id
+                          return (
+                            <SelectItem key={`pt-from-${whId}`} value={String(whId)}>
+                              <div className="flex items-center justify-between w-full gap-4">
+                                <span>{w.warehouse_name}</span>
+                                <span className="text-white/40 font-mono text-xs">{w.stock_qty} uds</span>
+                              </div>
+                            </SelectItem>
+                          )
+                        })}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
 
-              {/* Origin warehouse - only with stock */}
-              <div className="flex flex-col gap-1.5">
-                <Label>Almacén Origen</Label>
-                <Select value={ptOrigin} onValueChange={(v) => { setPtOrigin(v); setPtDestination('') }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona origen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectedProductStock?.warehouses
-                      .filter((w) => w.stock_qty > 0)
-                      .map((w) => {
-                        const whId = warehouseOptions.find(o => o.name === w.warehouse_name)?.id
-                        return (
-                          <SelectItem key={`pt-from-${whId}`} value={String(whId)}>
-                            <div className="flex items-center justify-between w-full gap-4">
-                              <span>{w.warehouse_name}</span>
-                              <span className="text-white/40 font-mono text-xs">{w.stock_qty} uds</span>
-                            </div>
-                          </SelectItem>
-                        )
-                      })}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Critical/low warning */}
-              {ptOrigin && (() => {
-                const originWh = selectedProductStock?.warehouses.find(
-                  w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === ptOrigin
-                )
-                if (!originWh) return null
-                if (originWh.is_critical) {
-                  return (
-                    <div className="flex items-start gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
-                      <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-xs font-bold text-red-400">Stock Crítico</p>
-                        <p className="text-[10px] text-white/50 mt-0.5">
-                          Este almacén tiene {originWh.stock_qty} uds (mínimo: {originWh.min_stock}). Puedes realizar el traslado igualmente.
-                        </p>
-                      </div>
-                    </div>
-                  )
-                }
-                if (originWh.stock_qty <= originWh.min_stock * 1.5) {
-                  return (
-                    <div className="flex items-start gap-2 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
-                      <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-xs font-bold text-yellow-400">Stock Bajo</p>
-                        <p className="text-[10px] text-white/50 mt-0.5">
-                          Stock por debajo del nivel óptimo ({originWh.stock_qty}/{originWh.min_stock}).
-                        </p>
-                      </div>
-                    </div>
-                  )
-                }
-                return null
-              })()}
-
-              {/* Destination warehouse */}
-              <div className="flex flex-col gap-1.5">
-                <Label>Almacén Destino</Label>
-                <Select value={ptDestination} onValueChange={setPtDestination}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona destino" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectedProductStock?.warehouses
-                      .filter((w) => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) !== ptOrigin)
-                      .map((w) => {
-                        const whId = warehouseOptions.find(o => o.name === w.warehouse_name)?.id
-                        return (
-                          <SelectItem key={`pt-to-${whId}`} value={String(whId)}>
-                            {w.warehouse_name} {w.city ? `(${w.city})` : ''}
-                          </SelectItem>
-                        )
-                      })}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Quantity */}
-              <div className="flex flex-col gap-1.5">
-                <Label>
-                  Cantidad
-                  {ptOrigin && (
-                    <span className="text-white/40 font-normal ml-2">
-                      (max: {selectedProductStock?.warehouses.find(
-                        w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === ptOrigin
-                      )?.stock_qty || 0} uds)
-                    </span>
-                  )}
-                </Label>
-                <Input
-                  type="number"
-                  value={ptQty}
-                  onChange={(e) => setPtQty(parseInt(e.target.value) || 0)}
-                  min={1}
-                  max={selectedProductStock?.warehouses.find(
+                {/* Critical/low warning */}
+                {ptOrigin && (() => {
+                  const originWh = selectedProductStock?.warehouses.find(
                     w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === ptOrigin
-                  )?.stock_qty || 0}
-                />
+                  )
+                  if (!originWh) return null
+                  if (originWh.is_critical) {
+                    return (
+                      <div className="flex items-start gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                        <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-bold text-red-400">Stock Critico</p>
+                          <p className="text-[10px] text-white/50 mt-0.5">
+                            Este almacen tiene {originWh.stock_qty} uds (minimo: {originWh.min_stock}). Puedes realizar el traslado igualmente.
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  }
+                  if (originWh.stock_qty <= originWh.min_stock * 1.5) {
+                    return (
+                      <div className="flex items-start gap-2 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+                        <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-bold text-yellow-400">Stock Bajo</p>
+                          <p className="text-[10px] text-white/50 mt-0.5">
+                            Stock por debajo del nivel optimo ({originWh.stock_qty}/{originWh.min_stock}).
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
+
+                {/* Destination warehouse */}
+                <div className="flex flex-col gap-1.5">
+                  <Label>Almacen Destino</Label>
+                  <Select value={ptDestination} onValueChange={setPtDestination}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona destino" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedProductStock?.warehouses
+                        .filter((w) => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) !== ptOrigin)
+                        .map((w) => {
+                          const whId = warehouseOptions.find(o => o.name === w.warehouse_name)?.id
+                          return (
+                            <SelectItem key={`pt-to-${whId}`} value={String(whId)}>
+                              {w.warehouse_name} {w.city ? `(${w.city})` : ''}
+                            </SelectItem>
+                          )
+                        })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Quantity */}
+                <div className="flex flex-col gap-1.5">
+                  <Label>
+                    Cantidad
+                    {ptOrigin && (
+                      <span className="text-white/40 font-normal ml-2">
+                        (max: {selectedProductStock?.warehouses.find(
+                          w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === ptOrigin
+                        )?.stock_qty || 0} uds)
+                      </span>
+                    )}
+                  </Label>
+                  <Input
+                    type="number"
+                    value={ptQty}
+                    onChange={(e) => {
+                      const maxStock = selectedProductStock?.warehouses.find(
+                        w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === ptOrigin
+                      )?.stock_qty || 0
+                      const val = parseInt(e.target.value) || 1
+                      setPtQty(Math.min(val, maxStock))
+                    }}
+                    min={1}
+                    max={selectedProductStock?.warehouses.find(
+                      w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === ptOrigin
+                    )?.stock_qty || 0}
+                  />
+                </div>
+
+                {/* Flow indicator */}
+                {ptOrigin && ptDestination && ptOrigin !== ptDestination && (
+                  <div className="flex items-center justify-center gap-3 py-2 px-4 rounded-xl bg-white/5 border border-white/5">
+                    <span className="text-xs text-white/60 font-medium">
+                      {warehouseOptions.find(w => String(w.id) === ptOrigin)?.city || 'Origen'}
+                    </span>
+                    <ArrowRight className="w-4 h-4 text-nikeOrange" />
+                    <span className="text-xs text-white/60 font-medium">
+                      {warehouseOptions.find(w => String(w.id) === ptDestination)?.city || 'Destino'}
+                    </span>
+                    <span className="text-xs text-white/40">·</span>
+                    <span className="text-xs text-nikeOrange font-bold">{ptQty} unidades</span>
+                  </div>
+                )}
+
+                {ptSuccess && (
+                  <div className="text-xs text-green-400 font-semibold bg-green-500/10 border border-green-500/20 p-3 rounded-xl flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 shrink-0" />
+                    {ptSuccess}
+                  </div>
+                )}
+                {ptError && (
+                  <div className="text-xs text-red-400 font-semibold bg-red-500/10 border border-red-500/20 p-3 rounded-xl flex items-center gap-2">
+                    <X className="w-4 h-4 shrink-0" />
+                    {ptError}
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setProductTransferOpen(false)}
+                    className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-sm font-semibold transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <Button type="submit" className="flex-1 bg-nikeOrange hover:bg-nikeOrange/80 text-white">
+                    <ClipboardList className="w-4 h-4 mr-2" />
+                    Confirmar Traslado
+                  </Button>
+                </div>
               </div>
 
-              {/* Flow indicator */}
-              {ptOrigin && ptDestination && ptOrigin !== ptDestination && (
-                <div className="flex items-center justify-center gap-3 py-2 px-4 rounded-xl bg-white/5 border border-white/5">
-                  <span className="text-xs text-white/60 font-medium">
-                    {warehouseOptions.find(w => String(w.id) === ptOrigin)?.city || 'Origen'}
-                  </span>
-                  <ArrowRight className="w-4 h-4 text-nikeOrange" />
-                  <span className="text-xs text-white/60 font-medium">
-                    {warehouseOptions.find(w => String(w.id) === ptDestination)?.city || 'Destino'}
-                  </span>
-                  <span className="text-xs text-white/40">·</span>
-                  <span className="text-xs text-nikeOrange font-bold">{ptQty} unidades</span>
-                </div>
-              )}
+              {/* Right column - tracking simulation */}
+              <div className="h-full min-h-[250px]">
+                {ptOrigin && ptDestination && ptOrigin !== ptDestination ? (() => {
+                  const now = new Date()
+                  const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+                  const trackingId = `TRK-${dateStr}-${String(Math.floor(1000 + Math.random() * 9000))}`
+                  const fromCity = warehouseOptions.find(w => String(w.id) === ptOrigin)?.city || ''
+                  const toCity = warehouseOptions.find(w => String(w.id) === ptDestination)?.city || ''
+                  const hasDistance = fromCity && toCity
+                  let estimatedDays = 3
+                  if (hasDistance) {
+                    const routes: Record<string, Record<string, number>> = {
+                      'Lima': { 'Arequipa': 5, 'Trujillo': 3, 'Cusco': 6, 'Piura': 4, 'Lima': 1 },
+                      'Arequipa': { 'Lima': 5, 'Trujillo': 6, 'Cusco': 3, 'Piura': 7 },
+                      'Trujillo': { 'Lima': 3, 'Arequipa': 6, 'Cusco': 5, 'Piura': 2 },
+                      'Cusco': { 'Lima': 6, 'Arequipa': 3, 'Trujillo': 5, 'Piura': 7 },
+                      'Piura': { 'Lima': 4, 'Arequipa': 7, 'Trujillo': 2, 'Cusco': 7 },
+                    }
+                    estimatedDays = routes[fromCity]?.[toCity] || 4
+                  }
+                  const eta = new Date(now.getTime() + estimatedDays * 24 * 60 * 60 * 1000)
+                  const etaStr = eta.toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })
+                  const progressPercent = 15 + Math.floor(Math.random() * 20)
 
-              {ptSuccess && (
-                <div className="text-xs text-green-400 font-semibold bg-green-500/10 border border-green-500/20 p-3 rounded-xl flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 shrink-0" />
-                  {ptSuccess}
-                </div>
-              )}
-              {ptError && (
-                <div className="text-xs text-red-400 font-semibold bg-red-500/10 border border-red-500/20 p-3 rounded-xl flex items-center gap-2">
-                  <X className="w-4 h-4 shrink-0" />
-                  {ptError}
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setProductTransferOpen(false)}
-                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-sm font-semibold transition-all"
-              >
-                Cancelar
-              </button>
-              <Button type="submit" className="flex-1 bg-nikeOrange hover:bg-nikeOrange/80 text-white">
-                <ClipboardList className="w-4 h-4 mr-2" />
-                Confirmar Traslado
-              </Button>
+                  return (
+                    <TrackingMap
+                      fromId={ptOrigin}
+                      toId={ptDestination}
+                      warehouses={selectedProductStock?.warehouses || []}
+                      warehouseOptions={warehouseOptions}
+                      totalStock={selectedProductStock?.totalStock || 0}
+                      transferQty={ptQty}
+                      trackingId={trackingId}
+                      estimatedDays={estimatedDays}
+                      etaStr={etaStr}
+                      progressPercent={progressPercent}
+                    />
+                  )
+                })() : (
+                  <div className="h-full rounded-xl bg-white/[0.02] border border-dashed border-white/10 flex flex-col items-center justify-center text-center p-6">
+                    <ArrowLeftRight className="w-8 h-8 text-white/20 mb-3" />
+                    <p className="text-xs text-white/30 font-medium">Simulacion de Traslado</p>
+                    <p className="text-[10px] text-white/20 mt-1 max-w-[180px]">
+                      Selecciona origen y destino en el formulario para ver la simulacion del traslado
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </form>
         </DialogContent>
