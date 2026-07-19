@@ -7,12 +7,12 @@ import { useDashboardFilters } from '../../context/DashboardFilterContext'
 import type { MetricsSummary } from '../../types/metrics'
 
 const iconMap: Record<string, React.ReactNode> = {
-  Package: <Package className="w-5 h-5 lg:w-6 lg:h-6 text-nikeOrange" />,
-  DollarSign: <DollarSign className="w-5 h-5 lg:w-6 lg:h-6 text-blue-400" />,
-  Target: <Target className="w-5 h-5 lg:w-6 lg:h-6 text-green-400" />,
-  CheckCircle2: <CheckCircle2 className="w-5 h-5 lg:w-6 lg:h-6 text-blue-400" />,
-  AlertCircle: <AlertCircle className="w-5 h-5 lg:w-6 lg:h-6 text-red-400" />,
-  TrendingUp: <TrendingUp className="w-5 h-5 lg:w-6 lg:h-6 text-green-400" />,
+  Package: <Package className="w-4 h-4 text-nikeOrange" />,
+  DollarSign: <DollarSign className="w-4 h-4 text-blue-400" />,
+  Target: <Target className="w-4 h-4 text-green-400" />,
+  CheckCircle2: <CheckCircle2 className="w-4 h-4 text-blue-400" />,
+  AlertCircle: <AlertCircle className="w-4 h-4 text-red-400" />,
+  TrendingUp: <TrendingUp className="w-4 h-4 text-green-400" />,
 }
 
 export const KpiGrid: React.FC = () => {
@@ -29,26 +29,22 @@ export const KpiGrid: React.FC = () => {
   }, [filters.timeRange, filters.warehouseId, filters.category])
 
   if (loading) {
-    return (
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
-        <MetricCardSkeleton count={6} />
-      </div>
-    )
+    return <MetricCardSkeleton count={6} />
   }
 
   if (!summary) return null
 
   const kpis = [
-    { label: 'Stock Total', value: summary.total_stock, icon: 'Package', color: 'text-nikeOrange', subtitle: `${summary.total_products} productos · ${summary.total_warehouses} almacenes` },
-    { label: 'Valor Inventario', value: summary.total_value, icon: 'DollarSign', color: 'text-blue-400', subtitle: `$${(summary.total_value / 1000).toFixed(1)}K valor total`, format: true },
-    { label: '% Cumplimiento', value: summary.fulfillment_rate, icon: 'Target', color: 'text-green-400', suffix: '%', subtitle: 'Pedidos completados a tiempo' },
-    { label: 'Nivel de Servicio', value: summary.service_level, icon: 'CheckCircle2', color: 'text-blue-400', suffix: '%', subtitle: 'Órdenes sin incidencias' },
-    { label: 'Envíos Retrasados', value: summary.delayed_shipments, icon: 'AlertCircle', color: 'text-red-400', subtitle: 'Requieren atención' },
-    { label: 'Rotación', value: summary.inventory_turnover, icon: 'TrendingUp', color: 'text-green-400', subtitle: 'Veces rotado en el período' },
+    { label: 'Stock Total', value: summary.total_stock, icon: 'Package', color: 'text-nikeOrange', subtitle: `${summary.total_products} prod.` },
+    { label: 'Valor Inventario', value: summary.total_value, icon: 'DollarSign', color: 'text-blue-400', subtitle: `$${(summary.total_value / 1000).toFixed(1)}K`, format: true },
+    { label: '% Cumplimiento', value: summary.fulfillment_rate, icon: 'Target', color: 'text-green-400', suffix: '%', subtitle: '' },
+    { label: 'Nivel Servicio', value: summary.service_level, icon: 'CheckCircle2', color: 'text-blue-400', suffix: '%', subtitle: '' },
+    { label: 'Envíos Retrasados', value: summary.delayed_shipments, icon: 'AlertCircle', color: 'text-red-400', subtitle: '' },
+    { label: 'Rotación', value: summary.inventory_turnover, icon: 'TrendingUp', color: 'text-green-400', subtitle: '' },
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
+    <div className="grid grid-cols-3 lg:grid-cols-6 gap-2 lg:gap-3">
       {kpis.map((kpi, i) => (
         <MetricCard
           key={kpi.label}
@@ -59,6 +55,7 @@ export const KpiGrid: React.FC = () => {
           iconBg={`${kpi.color.replace('text-', 'bg-')}/10`}
           subtitle={kpi.subtitle}
           index={i}
+          compact
         />
       ))}
     </div>

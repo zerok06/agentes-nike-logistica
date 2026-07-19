@@ -12,10 +12,6 @@ import { DashboardPage } from './pages/dashboard/DashboardPage'
 import { InventoryPage } from './pages/dashboard/InventoryPage'
 import { TrackingPage } from './pages/dashboard/TrackingPage'
 import { ChatbotPage } from './pages/dashboard/ChatbotPage'
-import { ProductRegistrationPage } from './pages/dashboard/ProductRegistrationPage'
-import { ProductsPage } from './pages/dashboard/ProductsPage'
-import { ProductDetailPage } from './pages/dashboard/ProductDetailPage'
-import { ProductEditPage } from './pages/dashboard/ProductEditPage'
 import { AuditPage } from './pages/dashboard/AuditPage'
 import { UsersPage } from './pages/dashboard/UsersPage'
 import { SettingsPage } from './pages/dashboard/SettingsPage'
@@ -109,25 +105,37 @@ const chatbotRoute = createRoute({
 const productsRoute = createRoute({
   getParentRoute: () => dashboardLayoutRoute,
   path: '/products',
-  component: ProductRegistrationPage,
+  beforeLoad: () => {
+    throw redirect({ to: '/inventory' })
+  },
+  component: () => null,
 })
 
 const productsListRoute = createRoute({
   getParentRoute: () => dashboardLayoutRoute,
   path: '/products/list',
-  component: ProductsPage,
+  beforeLoad: () => {
+    throw redirect({ to: '/inventory' })
+  },
+  component: () => null,
 })
 
 const productDetailRoute = createRoute({
   getParentRoute: () => dashboardLayoutRoute,
   path: '/products/$id',
-  component: ProductDetailPage,
+  beforeLoad: () => {
+    throw redirect({ to: '/inventory' })
+  },
+  component: () => null,
 })
 
 const productEditRoute = createRoute({
   getParentRoute: () => dashboardLayoutRoute,
   path: '/products/$id/edit',
-  component: ProductEditPage,
+  beforeLoad: () => {
+    throw redirect({ to: '/inventory' })
+  },
+  component: () => null,
 })
 
 const auditRoute = createRoute({

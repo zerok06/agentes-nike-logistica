@@ -15,7 +15,7 @@ const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.04 },
+    transition: { staggerChildren: 0.03 },
   },
 }
 
@@ -49,71 +49,66 @@ const DashboardContent: React.FC = () => {
       variants={containerVariants}
       initial={false}
       animate="visible"
-      className="space-y-6 lg:space-y-8"
+      className="space-y-5 lg:space-y-6"
     >
-      {/* Cabecera del Dashboard */}
+      {/* Cabecera compacta con filtros integrados */}
       <motion.div
         variants={sectionVariants}
-        className="flex items-center justify-between border-b border-white/10 pb-5"
+        className="flex items-center justify-between border-b border-white/10 pb-4"
       >
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse shadow-[0_0_10px_#f97316]" />
-            <span className="text-xs font-bold tracking-widest text-orange-400 uppercase">Centro de Inteligencia Logística</span>
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="w-2 h-2 rounded-full bg-nikeOrange animate-pulse shadow-[0_0_10px_#FA5400]" />
+            <span className="text-[10px] font-bold tracking-widest text-nikeOrange uppercase">Centro de Inteligencia Logística</span>
           </div>
-          <h1 className="text-2xl lg:text-3xl font-extrabold text-white">Dashboard</h1>
-          <p className="text-sm text-slate-400 mt-1">Métricas estratégicas de inventario, flujos y control operativo en tiempo real</p>
+          <h1 className="text-xl lg:text-2xl font-extrabold text-white">Dashboard</h1>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 text-[10px] text-white/40 font-mono">
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-orange-400' : ''}`} />
+        <div className="flex items-center gap-2">
+          <DashboardFilterBar refreshing={refreshing} onRefresh={handleRefresh} nextRefresh={nextRefresh} />
+          <div className="flex items-center gap-1.5 text-[10px] text-white/40 font-mono">
+            <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin text-nikeOrange' : ''}`} />
             {nextRefresh > 0 ? `${nextRefresh}s` : 'refrescando...'}
           </div>
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all disabled:opacity-50 border border-white/10"
+            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all disabled:opacity-50 border border-white/10"
           >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </motion.div>
 
-      {/* Barra de Filtros */}
-      <motion.div variants={sectionVariants}>
-        <DashboardFilterBar refreshing={refreshing} onRefresh={handleRefresh} nextRefresh={nextRefresh} />
-      </motion.div>
-
-      {/* Tarjetas KPI Superiores */}
+      {/* Tarjetas KPI - Fila compacta horizontal */}
       <motion.div variants={sectionVariants} key={`kpi-${refreshing}`}>
         <KpiGrid />
       </motion.div>
 
-      {/* Fila 1: Gráfico de Tendencia (TrendChart) en ancho completo o adaptado */}
-      <motion.div variants={sectionVariants}>
+      {/* Fila 1: TrendChart + ShipmentDonut en 2 columnas */}
+      <motion.div
+        variants={sectionVariants}
+        className="grid grid-cols-1 lg:grid-cols-2 gap-5"
+      >
         <TrendChart />
+        <ShipmentDonut />
       </motion.div>
 
-      {/* Fila 2: Nuestro nuevo StockChart interactivo (Ocupa todo el ancho para que respire con el gráfico circular) */}
+      {/* Fila 2: StockChart ancho completo */}
       <motion.div variants={sectionVariants}>
         <StockChart />
       </motion.div>
 
-      {/* Fila 3: Alertas y Donut de Envíos en dos columnas equilibradas */}
+      {/* Fila 3: Alertas y tablas de rendimiento */}
       <motion.div
         variants={sectionVariants}
-        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+        className="grid grid-cols-1 lg:grid-cols-2 gap-5"
       >
         <AlertsPanel />
-        <ShipmentDonut />
+        <WarehousePerformanceTable />
       </motion.div>
 
-      {/* Fila 4: Rendimiento de Sedes y Rutas de Despacho */}
-      <motion.div
-        variants={sectionVariants}
-        className="grid grid-cols-1 xl:grid-cols-2 gap-6"
-      >
-        <WarehousePerformanceTable />
+      {/* Fila 4: Rutas de despacho */}
+      <motion.div variants={sectionVariants}>
         <ShipmentRoutesTable />
       </motion.div>
     </motion.div>

@@ -12,7 +12,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, title, icon, action, children, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("rounded-3xl glass-panel p-6 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] hover:border-white/20 transition-all duration-300 hover:scale-[1.01] hover:shadow-[0_30px_60px_-10px_rgba(0,0,0,0.8)] relative overflow-hidden text-card-foreground", className)}
+      className={cn("rounded-3xl glass-panel p-6 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] hover:border-white/20 transition-all duration-300 hover:shadow-[0_30px_60px_-10px_rgba(0,0,0,0.8)] relative overflow-hidden text-card-foreground", className)}
       {...props}
     >
       {(title || action) && (

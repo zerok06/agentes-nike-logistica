@@ -28,7 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
         : 'Operador'
 
   return (
-    <header className="sticky top-0 z-30 glass-panel border-b border-white/10 px-4 md:px-6 h-20 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-30 glass-panel border-b border-white/10 bg-background/60 backdrop-blur-xl px-4 md:px-6 h-[70px] flex items-center justify-between gap-4">
       <div className="flex items-center gap-4">
         {isMobile && (
           <button

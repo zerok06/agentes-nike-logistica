@@ -49,7 +49,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const title = pageTitleMap[location.pathname] || 'Dashboard'
 
   return (
-    <div className="min-h-screen bg-command-center text-white flex relative overflow-hidden">
+    <div className="h-screen bg-command-center text-white flex">
       {/* Background command center tactical canvas */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div className="absolute inset-0 dot-matrix" />
@@ -67,7 +67,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
         isMobile={isMobile}
       />
 
-      <div className="flex-1 flex flex-col min-w-0 relative z-10">
+      <div className="flex-1 flex flex-col min-w-0 relative z-10 overflow-y-auto">
         <Header
           title={title}
           onMenuClick={() => setMobileOpen(true)}
@@ -76,7 +76,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           isMobile={isMobile}
         />
 
-        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-x-hidden">
+        <main className="flex-1 p-4 md:p-6 lg:p-8">
           {children}
         </main>
       </div>

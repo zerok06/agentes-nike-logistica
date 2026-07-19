@@ -20,12 +20,6 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['admin', 'supervisor'],
   },
   {
-    path: '/products/list',
-    label: 'Productos',
-    icon: 'PackagePlus',
-    roles: ['admin', 'supervisor', 'operador'],
-  },
-  {
     path: '/chatbot',
     label: 'Asistente IA',
     icon: 'MessageSquare',

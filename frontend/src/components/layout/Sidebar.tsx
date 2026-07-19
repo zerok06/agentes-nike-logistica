@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard,
   Package,
-  PackagePlus,
   MapPin,
   MessageSquare,
   ClipboardList,
@@ -24,7 +23,6 @@ import { cn } from '../../lib/utils'
 const iconMap: Record<string, React.ReactNode> = {
   LayoutDashboard: <LayoutDashboard className="w-5 h-5" />,
   Package: <Package className="w-5 h-5" />,
-  PackagePlus: <PackagePlus className="w-5 h-5" />,
   MapPin: <MapPin className="w-5 h-5" />,
   MessageSquare: <MessageSquare className="w-5 h-5" />,
   ClipboardList: <ClipboardList className="w-5 h-5" />,
@@ -98,7 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         style={{ width: collapsed ? 80 : 260 }}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between gap-3 p-6 border-b border-white/10 h-20">
+        <div className="flex items-center justify-between gap-3 p-6 border-b border-white/10 h-[70px]">
           <div className="flex items-center gap-3 overflow-hidden">
             <svg
               className="w-16 h-6 text-white fill-current shrink-0 filter drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]"
@@ -191,7 +189,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {!isMobile && (
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="hidden lg:flex absolute -right-3 top-20 w-6 h-6 rounded-full bg-nikeOrange items-center justify-center text-white shadow-lg hover:scale-110 transition-transform"
+            className="hidden lg:flex absolute -right-3 top-[70px] w-6 h-6 rounded-full bg-nikeOrange items-center justify-center text-white shadow-lg transition-transform"
           >
             <ChevronLeft
               className={cn('w-4 h-4 transition-transform', collapsed && 'rotate-180')}
