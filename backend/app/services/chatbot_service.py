@@ -1,6 +1,5 @@
 import os
 import re
-import html
 import logging
 from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,8 +33,8 @@ def sanitize_input(user_input: str) -> str:
     return sanitized
 
 def sanitize_output(llm_output: str) -> str:
-    """LLM02: Sanitiza la respuesta del LLM para evitar scripts XSS."""
-    return html.escape(llm_output)
+    """Sanitiza la respuesta del LLM — react-markdown no renderiza HTML, es seguro por defecto."""
+    return llm_output
 
 def _is_warehouse_question(question: str) -> bool:
     """Detecta si la pregunta es sobre almacenes o inventario general."""
@@ -177,13 +176,14 @@ INVENTARIO COMPLETO:
 
 INSTRUCCIONES:
 1. Responde de forma concisa y directa en espanol.
-2. Cuando pregunten sobre almacenes, usa la seccion "RESUMEN DE ALMACENES" y "DETALLE DE INVENTARIO POR ALMACEN".
-3. Cuando pregunten sobre stock critico, filtra los productos marcados como CRITICO.
-4. Cuando pregunten por un producto especifico, busca en el detalle de inventario.
-5. Si preguntan que almacen tiene mas inventario, compara los totales de stock de cada almacen y responde cual tiene mas.
-6. Incluye numeros concretos: cantidades, SKUs, nombres de almacenes.
-7. Si la informacion no esta en el contexto, di que no tienes esa informacion especifica.
-8. No inventes datos que no esten en el contexto."""
+2. Formatea tus respuestas usando **Markdown**: usa **negritas** para enfasis, listas con `-`, tablas cuando compares datos, `codigo` para SKUs numericos. Usa bloques ```mermaid para diagramas de flujo cuando sea util visualizar procesos logisticos. Separa secciones con `---`.
+3. Cuando pregunten sobre almacenes, usa la seccion "RESUMEN DE ALMACENES" y "DETALLE DE INVENTARIO POR ALMACEN".
+4. Cuando pregunten sobre stock critico, filtra los productos marcados como CRITICO.
+5. Cuando pregunten por un producto especifico, busca en el detalle de inventario.
+6. Si preguntan que almacen tiene mas inventario, compara los totales de stock de cada almacen y responde cual tiene mas.
+7. Incluye numeros concretos: cantidades, SKUs, nombres de almacenes.
+8. Si la informacion no esta en el contexto, di que no tienes esa informacion especifica.
+9. No inventes datos que no esten en el contexto."""
 
     # 4. Llamar al LLM (con manejo de errores)
     try:

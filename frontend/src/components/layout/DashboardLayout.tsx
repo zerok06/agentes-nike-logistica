@@ -5,6 +5,7 @@ import { Header } from './Header'
 import { useWebSocket } from '../../hooks/useWebSocket'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { inventoryService } from '../../services/inventory.service'
+import { useSidebarStore } from '../../store/useSidebarStore'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -22,8 +23,9 @@ const pageTitleMap: Record<string, string> = {
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const isMobile = useIsMobile()
-  const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const collapsed = useSidebarStore((s) => s.collapsed)
+  const setCollapsed = useSidebarStore((s) => s.setCollapsed)
   const location = useLocation()
 
   const wsUrl = import.meta.env.VITE_API_BASE_URL
