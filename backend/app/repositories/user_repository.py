@@ -26,12 +26,13 @@ class UserRepository:
         )
         return result.scalar_one_or_none()
 
-    async def create(self, email: str, username: str, password_hash: str, role: str) -> User:
+    async def create(self, email: str, username: str, password_hash: str, role: str, warehouse_id: int | None = None) -> User:
         user = User(
             email=email,
             username=username,
             password_hash=password_hash,
             role=role,
+            warehouse_id=warehouse_id,
         )
         self.session.add(user)
         await self.session.flush()

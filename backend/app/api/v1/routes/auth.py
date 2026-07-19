@@ -34,6 +34,7 @@ def _user_to_response(user: User) -> UserResponse:
         email=user.email,
         username=user.username,
         role=user.role,
+        warehouse_id=user.warehouse_id,
         is_active=user.is_active,
         created_at=user.created_at,
     )

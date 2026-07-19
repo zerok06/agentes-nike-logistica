@@ -22,6 +22,7 @@ class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=100)
     password: str = Field(..., min_length=6, max_length=128)
     role: UserRole = UserRole.OPERATOR
+    warehouse_id: int | None = None
 
 
 class UserLogin(BaseModel):
@@ -36,6 +37,7 @@ class UserResponse(BaseModel):
     email: str
     username: str
     role: str
+    warehouse_id: int | None = None
     is_active: bool
     created_at: datetime | None = None
 

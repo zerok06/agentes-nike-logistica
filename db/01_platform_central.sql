@@ -46,6 +46,7 @@ CREATE TABLE users (
     role            VARCHAR(50)  NOT NULL DEFAULT 'operador',
     status          VARCHAR(30)  DEFAULT 'active',
     is_active       BOOLEAN      DEFAULT TRUE,
+    warehouse_id    INT,
     created_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 );
@@ -147,6 +148,7 @@ CREATE TABLE products (
     color           VARCHAR(50),
     unit_price      NUMERIC(10,2) NOT NULL,
     description     TEXT,
+    barcode         VARCHAR(50)   UNIQUE,
     status          VARCHAR(30)   DEFAULT 'active',
     created_at      TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
 );
@@ -405,18 +407,40 @@ INSERT INTO roles (role_name, description) VALUES
 ('Invitado',      'Solo lectura y consultas básicas al chatbot');
 
 -- ----------------------------------------
+-- Almacenes con GPS real (Perú)
+-- ----------------------------------------
+INSERT INTO warehouses
+  (warehouse_id, organization_id, warehouse_name, city, address, latitude, longitude, capacity)
+VALUES
+(1,1,
+ 'Almacén Lima Centro','Lima','Av. Industrial 1250, Cercado de Lima',
+ -12.046373,-77.042754, 8000),
+(2,1,
+ 'Almacén Arequipa','Arequipa','Parque Industrial Mz. G Lt. 4, Arequipa',
+ -16.409047,-71.537451, 5000),
+(3,1,
+ 'Almacén Moquegua','Moquegua','Av. La Paz 789, Moquegua',
+ -17.193037,-70.935163, 2500);
+
+ALTER TABLE users
+    ADD CONSTRAINT fk_users_warehouse
+    FOREIGN KEY (warehouse_id)
+    REFERENCES warehouses(warehouse_id)
+    ON DELETE SET NULL;
+
+-- ----------------------------------------
 -- Usuarios demo (JWT auth + DEMO_MODE compatible)
 -- ----------------------------------------
-INSERT INTO users (user_id, organization_id, full_name, email, username, password_hash, role) VALUES
+INSERT INTO users (user_id, organization_id, full_name, email, username, password_hash, role, warehouse_id) VALUES
 (1,
  1,
- 'Admin Nike', 'admin@nike.com', 'admin', crypt('admin123', gen_salt('bf')), 'admin'),
+ 'Admin Nike', 'admin@nike.com', 'admin', crypt('admin123', gen_salt('bf')), 'admin', 1),
 (2,
  1,
- 'Supervisor Lima', 'supervisor@nike.com', 'supervisor', crypt('supervisor123', gen_salt('bf')), 'supervisor'),
+ 'Supervisor Lima', 'supervisor@nike.com', 'supervisor', crypt('supervisor123', gen_salt('bf')), 'supervisor', 1),
 (3,
  1,
- 'Operador Logístico', 'operador@nike.com', 'operador', crypt('operador123', gen_salt('bf')), 'operador');
+ 'Operador Logístico', 'operador@nike.com', 'operador', crypt('operador123', gen_salt('bf')), 'operador', 3);
 
 INSERT INTO user_roles (user_id, role_id)
 SELECT 1, role_id FROM roles WHERE role_name = 'Administrador';
@@ -627,22 +651,6 @@ SELECT p.product_id,
            'dim',          384
        )
 FROM products p;
-
--- ----------------------------------------
--- Almacenes con GPS real (Perú)
--- ----------------------------------------
-INSERT INTO warehouses
-  (warehouse_id, organization_id, warehouse_name, city, address, latitude, longitude, capacity)
-VALUES
-(1,1,
- 'Almacén Lima Centro','Lima','Av. Industrial 1250, Cercado de Lima',
- -12.046373,-77.042754, 8000),
-(2,1,
- 'Almacén Arequipa','Arequipa','Parque Industrial Mz. G Lt. 4, Arequipa',
- -16.409047,-71.537451, 5000),
-(3,1,
- 'Almacén Moquegua','Moquegua','Av. La Paz 789, Moquegua',
- -17.193037,-70.935163, 2500);
 
 -- ----------------------------------------
 -- Inventario (con stock crítico para demo del chatbot)
