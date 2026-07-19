@@ -1,5 +1,5 @@
 import api from './api'
-import type { StockItem, AuditLog, BarcodeResult, ProductResponse } from '../types/inventory'
+import type { StockItem, PaginatedAuditLogs, AuditSummary, BarcodeResult, ProductResponse } from '../types/inventory'
 
 export const inventoryService = {
   async getStock(): Promise<StockItem[]> {
@@ -12,8 +12,13 @@ export const inventoryService = {
     return res.data
   },
 
-  async getAuditLogs(): Promise<AuditLog[]> {
-    const res = await api.get<AuditLog[]>('/stock/audit-logs')
+  async getAuditLogs(params?: { page?: number; limit?: number; action?: string; date_from?: string; date_to?: string }): Promise<PaginatedAuditLogs> {
+    const res = await api.get<PaginatedAuditLogs>('/stock/audit-logs', { params })
+    return res.data
+  },
+
+  async getAuditSummary(): Promise<AuditSummary> {
+    const res = await api.get<AuditSummary>('/stock/audit-summary')
     return res.data
   },
 

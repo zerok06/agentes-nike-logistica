@@ -20,14 +20,23 @@ export interface AuditLog {
   audit_id: number
   action: string
   user_email: string | null
-  details: {
-    product_id?: string
-    from_warehouse_id?: string
-    to_warehouse_id?: string
-    quantity?: number
-    user_email?: string
-  }
+  details: Record<string, unknown>
   created_at: string
+}
+
+export interface PaginatedAuditLogs {
+  logs: AuditLog[]
+  total: number
+  page: number
+  limit: number
+  pages: number
+}
+
+export interface AuditSummary {
+  total: number
+  today_count: number
+  action_types: string[]
+  last_activity: string | null
 }
 
 export interface ChatMessage {

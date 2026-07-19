@@ -44,6 +44,19 @@ class AuditLogResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class PaginatedAuditResponse(BaseModel):
+    logs: list[AuditLogResponse]
+    total: int
+    page: int
+    limit: int
+    pages: int
+
+class AuditSummaryResponse(BaseModel):
+    total: int
+    today_count: int
+    action_types: list[str]
+    last_activity: str | None
+
 
 @router.get("/", response_model=list[InventoryItemResponse])
 async def list_stock(
@@ -132,21 +145,26 @@ async def transfer_stock(
     return {"message": "Transferencia realizada con éxito y registrada en auditoría."}
 
 
-@router.get("/audit-logs", response_model=list[AuditLogResponse])
+@router.get("/audit-logs", response_model=PaginatedAuditResponse)
 async def get_audit_trail(
     db: AsyncSession = Depends(get_central_db),
-    # Solo accesible para Admin y Supervisor
+    page: int = 1,
+    limit: int = 25,
+    action: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
     current_user: AuthenticatedUser = Depends(require_roles(UserRole.ADMIN, UserRole.SUPERVISOR))
-) -> list[AuditLogResponse]:
-    """Obtiene el historial inmutable de auditoría (solo Admin y Supervisor)."""
+) -> PaginatedAuditResponse:
+    """Obtiene el historial de auditoría paginado (solo Admin y Supervisor)."""
     audit_repo = AuditRepository(db)
-    logs = await audit_repo.get_logs()
+    offset = (page - 1) * limit
+    logs = await audit_repo.get_logs(limit=limit, offset=offset, action=action, date_from=date_from, date_to=date_to)
+    total = await audit_repo.get_logs_count(action=action, date_from=date_from, date_to=date_to)
     
-    response = []
+    log_responses = []
     for log in logs:
-        # Extraemos el email del usuario desde los detalles o dejamos un default
         user_email = log.details.get("user_email") if log.details else "Sistema"
-        response.append(
+        log_responses.append(
             AuditLogResponse(
                 audit_id=log.audit_id,
                 action=log.action,
@@ -155,4 +173,22 @@ async def get_audit_trail(
                 created_at=log.created_at
             )
         )
-    return response
+    
+    return PaginatedAuditResponse(
+        logs=log_responses,
+        total=total,
+        page=page,
+        limit=limit,
+        pages=max(1, (total + limit - 1) // limit)
+    )
+
+
+@router.get("/audit-summary", response_model=AuditSummaryResponse)
+async def get_audit_summary(
+    db: AsyncSession = Depends(get_central_db),
+    current_user: AuthenticatedUser = Depends(require_roles(UserRole.ADMIN, UserRole.SUPERVISOR))
+) -> AuditSummaryResponse:
+    """Obtiene resumen de auditoría (solo Admin y Supervisor)."""
+    audit_repo = AuditRepository(db)
+    summary = await audit_repo.get_summary()
+    return AuditSummaryResponse(**summary)
