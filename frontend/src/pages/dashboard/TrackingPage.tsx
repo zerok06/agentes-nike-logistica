@@ -13,7 +13,6 @@ import {
   Truck,
   Package,
   Clock,
-  Warehouse as WarehouseIcon,
   User,
   Activity,
   CheckCircle2,
@@ -23,7 +22,10 @@ import {
   Navigation,
   Gauge,
   Route as RouteIcon,
+  Search,
+  X,
 } from 'lucide-react'
+import { MetricCard } from '../../components/metrics/MetricCard'
 import { Card } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
@@ -36,8 +38,6 @@ import {
 } from '../../components/ui/dialog'
 import { Progress } from '../../components/ui/progress'
 import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs'
-
-import 'leaflet/dist/leaflet.css'
 
 interface Sede {
   id: number
@@ -334,11 +334,23 @@ function AutoFit({ sedes }: { sedes: Sede[] }) {
   return null
 }
 
+function FlyToVehicle({ vehicle }: { vehicle: { currentPos: [number, number] } | null }) {
+  const map = useMap()
+  useEffect(() => {
+    if (vehicle) {
+      map.flyTo(vehicle.currentPos, 8, { duration: 1 })
+    }
+  }, [map, vehicle])
+  return null
+}
+
 export const TrackingPage: React.FC = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>(INITIAL_VEHICLES)
   const [selectedSede, setSelectedSede] = useState<Sede | null>(null)
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
   const [filter, setFilter] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [flyToVehicle, setFlyToVehicle] = useState<Vehicle | null>(null)
   const updateCountRef = useRef(0)
 
   useEffect(() => {
@@ -412,9 +424,19 @@ export const TrackingPage: React.FC = () => {
     return () => clearInterval(interval)
   }, [])
 
-  const filteredVehicles = filter === 'all'
+  const filteredVehicles = (filter === 'all'
     ? vehicles
     : vehicles.filter((v) => v.status === filter)
+  ).filter((v) => {
+    if (!searchQuery) return true
+    const q = searchQuery.toLowerCase()
+    return (
+      v.id.toLowerCase().includes(q) ||
+      v.driver.toLowerCase().includes(q) ||
+      v.cargo.toLowerCase().includes(q) ||
+      v.plate.toLowerCase().includes(q)
+    )
+  })
 
   const stats = {
     total: vehicles.length,
@@ -433,237 +455,203 @@ export const TrackingPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 lg:gap-3">
         {[
-          { label: 'Total Envíos', value: stats.total, icon: <Package className="w-5 h-5 text-nikeOrange" />, color: 'text-nikeOrange' },
-          { label: 'En Tránsito', value: stats.enTransito, icon: <Truck className="w-5 h-5 text-cyan-400" />, color: 'text-cyan-400' },
-          { label: 'Entregados', value: stats.entregados, icon: <CheckCircle2 className="w-5 h-5 text-emerald-400" />, color: 'text-emerald-400' },
-          { label: 'Retrasados', value: stats.retrasados, icon: <AlertCircle className="w-5 h-5 text-red-500" />, color: 'text-red-500' },
-        ].map((stat) => (
-          <Card key={stat.label}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-white/40 uppercase tracking-wider font-semibold">{stat.label}</p>
-                <p className={`text-2xl font-bold mt-1 ${stat.color}`}>{stat.value}</p>
-              </div>
-              <div className="p-2.5 rounded-2xl bg-white/5">{stat.icon}</div>
-            </div>
-          </Card>
+          { label: 'Total Envíos', value: stats.total, icon: <Package className="w-4 h-4" />, color: 'text-white', iconBg: 'bg-nikeOrange/10 border border-nikeOrange/20 text-nikeOrange' },
+          { label: 'En Tránsito', value: stats.enTransito, icon: <Truck className="w-4 h-4" />, color: 'text-cyan-400', iconBg: 'bg-cyan-500/10 border border-cyan-500/20 text-cyan-400' },
+          { label: 'Entregados', value: stats.entregados, icon: <CheckCircle2 className="w-4 h-4" />, color: 'text-emerald-400', iconBg: 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' },
+          { label: 'Retrasados', value: stats.retrasados, icon: <AlertCircle className="w-4 h-4" />, color: 'text-red-400', iconBg: 'bg-red-500/10 border border-red-500/20 text-red-400' },
+          { label: 'Distancia Total', value: `${totalDistance.toFixed(0)} km`, icon: <RouteIcon className="w-4 h-4" />, color: 'text-white', iconBg: 'bg-purple-500/10 border border-purple-500/20 text-purple-400' },
+          { label: 'Recorrido', value: `${totalTraveled.toFixed(0)} km`, icon: <Activity className="w-4 h-4" />, color: 'text-emerald-400', iconBg: 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' },
+          { label: 'Vel. Promedio', value: `${Math.round(avgSpeed)} km/h`, icon: <Gauge className="w-4 h-4" />, color: 'text-cyan-400', iconBg: 'bg-cyan-500/10 border border-cyan-500/20 text-cyan-400' },
+        ].map((s, i) => (
+          <MetricCard
+            key={s.label}
+            label={s.label}
+            value={s.value}
+            icon={s.icon}
+            color={s.color}
+            iconBg={s.iconBg}
+            index={i}
+            compact
+            animate
+          />
         ))}
       </div>
 
-      {/* Distance & speed overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-white/40 uppercase tracking-wider font-semibold">Distancia Total</p>
-              <p className="text-2xl font-bold mt-1 text-white/90">{totalDistance.toFixed(0)} km</p>
-            </div>
-            <div className="p-2.5 rounded-2xl bg-white/5"><RouteIcon className="w-5 h-5 text-nikeOrange" /></div>
-          </div>
-        </Card>
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-white/40 uppercase tracking-wider font-semibold">Recorrido</p>
-              <p className="text-2xl font-bold mt-1 text-emerald-400">{totalTraveled.toFixed(0)} km</p>
-            </div>
-            <div className="p-2.5 rounded-2xl bg-white/5"><Activity className="w-5 h-5 text-emerald-400" /></div>
-          </div>
-        </Card>
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-white/40 uppercase tracking-wider font-semibold">Velocidad Promedio</p>
-              <p className="text-2xl font-bold mt-1 text-cyan-400">{Math.round(avgSpeed)} km/h</p>
-            </div>
-            <div className="p-2.5 rounded-2xl bg-white/5"><Gauge className="w-5 h-5 text-cyan-400" /></div>
-          </div>
-        </Card>
-      </div>
-
       {/* Map + Sede details */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Leaflet Map */}
-        <div className="lg:col-span-2">
-          <Card
-            title="Mapa de Sedes — Nike Perú"
-            icon={<MapPin className="w-5 h-5 text-nikeOrange" />}
-          >
-            <div className="rounded-2xl overflow-hidden border border-white/5" style={{ height: '500px' }}>
-              <MapContainer
-                center={[-12.5, -75]}
-                zoom={5}
-                style={{ height: '100%', width: '100%' }}
-                scrollWheelZoom
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                />
+      <div className="relative">
+        <Card
+          title="Mapa de Sedes — Nike Perú"
+          icon={<MapPin className="w-5 h-5 text-nikeOrange" />}
+        >
+          <div className="rounded-2xl overflow-hidden border border-white/5" style={{ height: '550px' }}>
+            <MapContainer
+              center={[-12.5, -75]}
+              zoom={5}
+              style={{ height: '100%', width: '100%' }}
+              scrollWheelZoom
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              />
 
-                <AutoFit sedes={SEDES} />
+              <AutoFit sedes={SEDES} />
+              <FlyToVehicle vehicle={flyToVehicle} />
 
-                {vehicles
-                  .filter((v) => v.status === 'en_transito' || v.status === 'retrasado')
-                  .map((v) => (
+              {vehicles
+                .filter((v) => v.status === 'en_transito' || v.status === 'retrasado')
+                .map((v) => (
+                  <Polyline
+                    key={`route-full-${v.id}`}
+                    positions={v.route}
+                    pathOptions={{
+                      color: statusConfig[v.status].color,
+                      weight: 2,
+                      opacity: 0.2,
+                      dashArray: '5, 8',
+                    }}
+                  />
+                ))}
+
+              {vehicles
+                .filter((v) => v.status === 'en_transito' || v.status === 'retrasado')
+                .map((v) => {
+                  const { segmentIndex } = getPositionAlongRoute(v.route, v.progress)
+                  const traveledPath = v.route.slice(0, segmentIndex + 1)
+                  const { pos } = getPositionAlongRoute(v.route, v.progress)
+                  traveledPath.push(pos)
+                  return (
                     <Polyline
-                      key={`route-full-${v.id}`}
-                      positions={v.route}
+                      key={`route-traveled-${v.id}`}
+                      positions={traveledPath}
                       pathOptions={{
                         color: statusConfig[v.status].color,
-                        weight: 2,
-                        opacity: 0.2,
-                        dashArray: '5, 8',
+                        weight: 3,
+                        opacity: 0.8,
                       }}
                     />
-                  ))}
+                  )
+                })}
 
-                {vehicles
-                  .filter((v) => v.status === 'en_transito' || v.status === 'retrasado')
-                  .map((v) => {
-                    const { segmentIndex } = getPositionAlongRoute(v.route, v.progress)
-                    const traveledPath = v.route.slice(0, segmentIndex + 1)
-                    const { pos } = getPositionAlongRoute(v.route, v.progress)
-                    traveledPath.push(pos)
-                    return (
-                      <Polyline
-                        key={`route-traveled-${v.id}`}
-                        positions={traveledPath}
-                        pathOptions={{
-                          color: statusConfig[v.status].color,
-                          weight: 3,
-                          opacity: 0.8,
-                        }}
-                      />
-                    )
-                  })}
+              {SEDES.map((sede) => (
+                <Marker
+                  key={sede.id}
+                  position={[sede.lat, sede.lng]}
+                  icon={createSedeIcon(sedeStatusConfig[sede.status].color, sede.status)}
+                  eventHandlers={{ click: () => setSelectedSede(sede) }}
+                >
+                  <Popup>
+                    <div style={{ minWidth: '180px' }}>
+                      <strong style={{ fontSize: '14px' }}>{sede.name}</strong>
+                      <br />
+                      <span style={{ color: '#999', fontSize: '12px' }}>{sede.city}</span>
+                      <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '8px 0' }} />
+                      <div style={{ fontSize: '12px' }}>
+                        <div>📦 Stock: <strong>{sede.stock.toLocaleString()}</strong> / {sede.capacity.toLocaleString()}</div>
+                        <div>👤 {sede.manager}</div>
+                        <div>📞 {sede.phone}</div>
+                        <div style={{ marginTop: '4px' }}>
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '2px 8px',
+                            borderRadius: '10px',
+                            fontSize: '11px',
+                            background: sedeStatusConfig[sede.status].color + '20',
+                            color: sedeStatusConfig[sede.status].color,
+                          }}>
+                            {sedeStatusConfig[sede.status].label}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
 
-                {SEDES.map((sede) => (
+              {vehicles
+                .filter((v) => v.status === 'en_transito' || v.status === 'retrasado')
+                .map((v) => (
                   <Marker
-                    key={sede.id}
-                    position={[sede.lat, sede.lng]}
-                    icon={createSedeIcon(sedeStatusConfig[sede.status].color, sede.status)}
-                    eventHandlers={{ click: () => setSelectedSede(sede) }}
+                    key={`vehicle-${v.id}`}
+                    position={v.currentPos}
+                    icon={createVehicleIcon(statusConfig[v.status].color, v.type, v.bearing)}
+                    zIndexOffset={1000}
                   >
                     <Popup>
                       <div style={{ minWidth: '180px' }}>
-                        <strong style={{ fontSize: '14px' }}>{sede.name}</strong>
+                        <strong>{v.id}</strong> — {v.plate}
                         <br />
-                        <span style={{ color: '#999', fontSize: '12px' }}>{sede.city}</span>
+                        <span style={{ color: '#999', fontSize: '12px' }}>{v.origin} → {v.destination}</span>
                         <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '8px 0' }} />
                         <div style={{ fontSize: '12px' }}>
-                          <div>📦 Stock: <strong>{sede.stock.toLocaleString()}</strong> / {sede.capacity.toLocaleString()}</div>
-                          <div>👤 {sede.manager}</div>
-                          <div>📞 {sede.phone}</div>
-                          <div style={{ marginTop: '4px' }}>
-                            <span style={{
-                              display: 'inline-block',
-                              padding: '2px 8px',
-                              borderRadius: '10px',
-                              fontSize: '11px',
-                              background: sedeStatusConfig[sede.status].color + '20',
-                              color: sedeStatusConfig[sede.status].color,
-                            }}>
-                              {sedeStatusConfig[sede.status].label}
-                            </span>
-                          </div>
+                          <div>👤 {v.driver}</div>
+                          <div>📦 {v.cargo} ({v.cargoQty} u.)</div>
+                          <div>⏱️ ETA: {v.eta}</div>
+                          <div>📊 Progreso: {Math.round(v.progress)}%</div>
+                          <div>🛣️ {v.traveledKm.toFixed(1)}/{v.distanceKm.toFixed(0)} km</div>
+                          <div>⚡ {v.speed} km/h</div>
                         </div>
                       </div>
                     </Popup>
                   </Marker>
                 ))}
+            </MapContainer>
+          </div>
 
-                {vehicles
-                  .filter((v) => v.status === 'en_transito' || v.status === 'retrasado')
-                  .map((v) => (
-                    <Marker
-                      key={`vehicle-${v.id}`}
-                      position={v.currentPos}
-                      icon={createVehicleIcon(statusConfig[v.status].color, v.type, v.bearing)}
-                      zIndexOffset={1000}
-                    >
-                      <Popup>
-                        <div style={{ minWidth: '180px' }}>
-                          <strong>{v.id}</strong> — {v.plate}
-                          <br />
-                          <span style={{ color: '#999', fontSize: '12px' }}>{v.origin} → {v.destination}</span>
-                          <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '8px 0' }} />
-                          <div style={{ fontSize: '12px' }}>
-                            <div>👤 {v.driver}</div>
-                            <div>📦 {v.cargo} ({v.cargoQty} u.)</div>
-                            <div>⏱️ ETA: {v.eta}</div>
-                            <div>📊 Progreso: {Math.round(v.progress)}%</div>
-                            <div>🛣️ {v.traveledKm.toFixed(1)}/{v.distanceKm.toFixed(0)} km</div>
-                            <div>⚡ {v.speed} km/h</div>
-                          </div>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  ))}
-              </MapContainer>
-            </div>
-
-            {/* Legend */}
-            <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-white/50">
-              {Object.entries(sedeStatusConfig).map(([key, val]) => (
-                <div key={key} className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: val.color }} />
-                  {val.label}
-                </div>
-              ))}
-              <div className="flex items-center gap-1.5">
-                <Navigation className="w-3 h-3 text-cyan-400" />
-                Ruta de envío
+          {/* Legend */}
+          <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-white/50">
+            {Object.entries(sedeStatusConfig).map(([key, val]) => (
+              <div key={key} className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: val.color }} />
+                {val.label}
               </div>
+            ))}
+            <div className="flex items-center gap-1.5">
+              <Navigation className="w-3 h-3 text-cyan-400" />
+              Ruta de envío
             </div>
-          </Card>
-        </div>
+          </div>
+        </Card>
 
-        {/* Sede details panel */}
-        <div className="lg:col-span-1">
-          <Card
-            title={selectedSede ? selectedSede.name : 'Sedes de Nike Perú'}
-            icon={<WarehouseIcon className="w-5 h-5 text-nikeOrange" />}
-          >
+        {/* Floating sede panel overlay */}
+        <div className="absolute top-4 right-4 z-[1000] w-80 max-h-[510px] overflow-y-auto rounded-xl bg-black/80 backdrop-blur-md border border-white/10 shadow-xl">
+          <div className="p-4">
             {selectedSede ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-white/90">{selectedSede.name}</h3>
                   <Badge variant={sedeStatusConfig[selectedSede.status].variant}>
                     {sedeStatusConfig[selectedSede.status].label}
                   </Badge>
-                  <span className="text-xs text-white/40">{selectedSede.city}</span>
+                </div>
+                <p className="text-xs text-white/40">{selectedSede.city}</p>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-2.5 rounded-xl bg-white/5">
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider">Stock</p>
+                    <p className="text-base font-bold text-white/90">{selectedSede.stock.toLocaleString()}</p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white/5">
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider">Capacidad</p>
+                    <p className="text-base font-bold text-white/90">{selectedSede.capacity.toLocaleString()}</p>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl bg-white/5">
-                    <p className="text-xs text-white/40 uppercase tracking-wider">Stock</p>
-                    <p className="text-lg font-bold text-white/90">{selectedSede.stock.toLocaleString()}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-white/5">
-                    <p className="text-xs text-white/40 uppercase tracking-wider">Capacidad</p>
-                    <p className="text-lg font-bold text-white/90">{selectedSede.capacity.toLocaleString()}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-white/60">
-                    <User className="w-4 h-4 text-white/30" />
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-xs text-white/60">
+                    <User className="w-3 h-3 text-white/30" />
                     {selectedSede.manager}
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-white/60">
-                    <Package className="w-4 h-4 text-white/30" />
+                  <div className="flex items-center gap-2 text-xs text-white/60">
+                    <Package className="w-3 h-3 text-white/30" />
                     {selectedSede.phone}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-white/60">
-                    <MapPin className="w-4 h-4 text-white/30" />
-                    {selectedSede.lat.toFixed(4)}, {selectedSede.lng.toFixed(4)}
                   </div>
                 </div>
 
                 <div>
-                  <div className="flex justify-between text-xs text-white/40 mb-1">
+                  <div className="flex justify-between text-[10px] text-white/40 mb-1">
                     <span>Utilización</span>
                     <span>{Math.round((selectedSede.stock / selectedSede.capacity) * 100)}%</span>
                   </div>
@@ -673,37 +661,37 @@ export const TrackingPage: React.FC = () => {
                   />
                 </div>
 
-                <Button variant="ghost" size="sm" onClick={() => setSelectedSede(null)}>
+                <Button variant="ghost" size="sm" className="w-full" onClick={() => setSelectedSede(null)}>
                   ← Volver
                 </Button>
               </div>
             ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-white/40">
+              <div className="space-y-2">
+                <p className="text-xs text-white/40 mb-3">
                   Haz clic en un marcador del mapa o en una sede para ver detalles.
                 </p>
                 {SEDES.map((sede) => (
                   <button
                     key={sede.id}
                     onClick={() => setSelectedSede(sede)}
-                    className="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-left"
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-left"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5">
                       <span
-                        className="w-3 h-3 rounded-full"
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
                         style={{ background: sedeStatusConfig[sede.status].color }}
                       />
                       <div>
-                        <p className="text-sm font-semibold text-white/90">{sede.city}</p>
-                        <p className="text-xs text-white/40">{sede.stock.toLocaleString()} u.</p>
+                        <p className="text-xs font-semibold text-white/90">{sede.city}</p>
+                        <p className="text-[10px] text-white/40">{sede.stock.toLocaleString()} u.</p>
                       </div>
                     </div>
-                    <MapPin className="w-4 h-4 text-white/30" />
+                    <MapPin className="w-3.5 h-3.5 text-white/30 shrink-0" />
                   </button>
                 ))}
               </div>
             )}
-          </Card>
+          </div>
         </div>
       </div>
 
@@ -711,6 +699,23 @@ export const TrackingPage: React.FC = () => {
       <Card
         title="Vehículos y Envíos"
         icon={<Truck className="w-5 h-5 text-nikeOrange" />}
+        action={
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <input
+              type="text"
+              placeholder="Buscar por ID, conductor, carga..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-52 pl-9 pr-8 py-1.5 text-xs rounded-xl bg-white/5 border border-white/10 text-white/90 placeholder-white/30 focus:outline-none focus:border-nikeOrange/50 transition-colors"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        }
       >
         <Tabs defaultValue="all" onValueChange={setFilter}>
           <TabsList>
@@ -723,6 +728,9 @@ export const TrackingPage: React.FC = () => {
         </Tabs>
 
         <div className="space-y-3 mt-4">
+          {filteredVehicles.length === 0 && searchQuery && (
+            <p className="text-xs text-white/40 text-center py-6">No se encontraron vehículos con esa búsqueda.</p>
+          )}
           <AnimatePresence>
             {filteredVehicles.map((vehicle) => {
               const status = statusConfig[vehicle.status]
@@ -734,7 +742,10 @@ export const TrackingPage: React.FC = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  onClick={() => setSelectedVehicle(vehicle)}
+                  onClick={() => {
+                    setSelectedVehicle(vehicle)
+                    setFlyToVehicle(vehicle)
+                  }}
                   className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-all cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-3">
@@ -761,7 +772,6 @@ export const TrackingPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Barra de progreso con color semántico aplicado */}
                   <div className="mb-3 w-full bg-white/10 h-2.5 rounded-full overflow-hidden">
                     <div 
                       className={`h-full rounded-full transition-all duration-500 ${customStyles.bar}`} 

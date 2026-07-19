@@ -1,8 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { MetricCard } from '../metrics/MetricCard'
-import { Package, ArrowUpFromLine, ArrowDownToLine, ArrowLeftRight, Hash, Clock, Truck, Calendar } from 'lucide-react'
+import { Hash, Clock, Truck, Calendar } from 'lucide-react'
 
 const CITY_COORDS: Record<string, [number, number]> = {
   Piura: [-5.194, -80.632],
@@ -26,7 +25,6 @@ interface TrackingMapProps {
   toId: string
   warehouses: WarehouseData[]
   warehouseOptions: { id: number; name: string; city: string | null }[]
-  totalStock: number
   transferQty: number
   trackingId: string
   estimatedDays: number
@@ -89,7 +87,6 @@ export default function TrackingMap({
   toId,
   warehouses,
   warehouseOptions,
-  totalStock,
   transferQty,
   trackingId,
   estimatedDays,
@@ -119,14 +116,6 @@ export default function TrackingMap({
   const fromCity = warehouseOptions.find(w => String(w.id) === fromId)?.city || ''
   const toCity = warehouseOptions.find(w => String(w.id) === toId)?.city || ''
 
-  const fromWhStock = warehouses.find(w =>
-    String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === fromId
-  )?.stock_qty || 0
-
-  const toWhStock = warehouses.find(w =>
-    String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === toId
-  )?.stock_qty || 0
-
   return (
     <div className="rounded-xl bg-white/[0.03] border border-white/10 overflow-hidden h-full flex flex-col">
       {/* Header */}
@@ -134,46 +123,6 @@ export default function TrackingMap({
         <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">
           Simulacion de Traslado
         </p>
-      </div>
-
-      {/* Stock metrics row - same style as inventory */}
-      <div className="grid grid-cols-4 gap-2 px-4 py-3 border-b border-white/10">
-        <MetricCard
-          label="Stock Total"
-          value={totalStock}
-          icon={<Package className="w-4 h-4" />}
-          color="text-white"
-          iconBg="bg-nikeOrange/10 border border-nikeOrange/20 text-nikeOrange"
-          compact
-          animate={false}
-        />
-        <MetricCard
-          label="Origen"
-          value={`${fromWhStock} uds`}
-          icon={<ArrowUpFromLine className="w-4 h-4" />}
-          color="text-cyan-400"
-          iconBg="bg-cyan-500/10 border border-cyan-500/20 text-cyan-400"
-          compact
-          animate={false}
-        />
-        <MetricCard
-          label="Destino"
-          value={`${toWhStock} uds`}
-          icon={<ArrowDownToLine className="w-4 h-4" />}
-          color="text-emerald-400"
-          iconBg="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-          compact
-          animate={false}
-        />
-        <MetricCard
-          label="A Transferir"
-          value={`${transferQty} uds`}
-          icon={<ArrowLeftRight className="w-4 h-4" />}
-          color="text-yellow-400"
-          iconBg="bg-yellow-500/10 border border-yellow-500/20 text-yellow-400"
-          compact
-          animate={false}
-        />
       </div>
 
       {/* Map */}

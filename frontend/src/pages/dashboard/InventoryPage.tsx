@@ -871,7 +871,7 @@ export const InventoryPage: React.FC = () => {
             </div>
           ) : (
             <form onSubmit={handleTransfer}>
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-[2fr_3fr] gap-6">
                 {/* Left column - form */}
                 <div className="space-y-5">
                   {/* Producto selector */}
@@ -1134,8 +1134,7 @@ export const InventoryPage: React.FC = () => {
                         toId={toWarehouse}
                         warehouses={selectedTransferStock?.warehouses || []}
                         warehouseOptions={warehouseOptions}
-                        totalStock={selectedTransferStock?.totalStock || 0}
-                        transferQty={transferQty}
+                      transferQty={transferQty}
                         trackingId={trackingId}
                         estimatedDays={estimatedDays}
                         etaStr={etaStr}
@@ -1546,7 +1545,7 @@ export const InventoryPage: React.FC = () => {
           </DialogHeader>
 
           <form onSubmit={handleProductTransfer}>
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-[2fr_3fr] gap-6">
               {/* Left column - form */}
               <div className="space-y-5">
                 {/* Product context */}
@@ -1752,7 +1751,6 @@ export const InventoryPage: React.FC = () => {
                       toId={ptDestination}
                       warehouses={selectedProductStock?.warehouses || []}
                       warehouseOptions={warehouseOptions}
-                      totalStock={selectedProductStock?.totalStock || 0}
                       transferQty={ptQty}
                       trackingId={trackingId}
                       estimatedDays={estimatedDays}
