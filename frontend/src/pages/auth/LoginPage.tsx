@@ -4,11 +4,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { motion } from 'framer-motion'
 import { useNavigate } from '@tanstack/react-router'
-import { Mail, Lock, Shield, Users, User } from 'lucide-react'
+import { Mail, Lock, Shield, Users, User, LogIn } from 'lucide-react'
 import { useAuthStore } from '../../store/useAuthStore'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { DEMO_CREDENTIALS } from '../../utils/constants'
+import { keycloakConfig, buildAuthorizationUrl } from '../../services/keycloak.service'
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -164,6 +165,27 @@ export const LoginPage: React.FC = () => {
               Iniciar Sesión
             </Button>
           </form>
+
+          {keycloakConfig.enabled && (
+            <>
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-white/10" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-[#050507] px-3 text-white/30">O continúa con</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => window.location.href = buildAuthorizationUrl()}
+                className="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 text-sm transition-colors"
+              >
+                <LogIn className="w-4 h-4" />
+                Iniciar sesión con Keycloak
+              </button>
+            </>
+          )}
 
           <div className="mt-6 lg:hidden space-y-2">
             <p className="text-xs text-white/40 uppercase tracking-wider font-semibold mb-3">

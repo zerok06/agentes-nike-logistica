@@ -8,6 +8,7 @@ import {
 import { DashboardLayout } from './components/layout/DashboardLayout'
 import { LoginPage } from './pages/auth/LoginPage'
 import { RegisterPage } from './pages/auth/RegisterPage'
+import { KeycloakCallback } from './pages/auth/KeycloakCallback'
 import { DashboardPage } from './pages/dashboard/DashboardPage'
 import { InventoryPage } from './pages/dashboard/InventoryPage'
 import { TrackingPage } from './pages/dashboard/TrackingPage'
@@ -60,6 +61,12 @@ const registerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/register',
   component: RegisterPage,
+})
+
+const keycloakCallbackRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/auth/callback',
+  component: KeycloakCallback,
 })
 
 const dashboardLayoutRoute = createRoute({
@@ -166,6 +173,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   registerRoute,
+  keycloakCallbackRoute,
   dashboardLayoutRoute.addChildren([
     dashboardRoute,
     inventoryRoute,

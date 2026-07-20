@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     database_url_supply: str
 
     # Keycloak
+    keycloak_enabled: bool = False
     keycloak_url: str = "http://localhost:8080"
     keycloak_realm: str = "nike-logistica"
     keycloak_client_id: str = "nike-backend"

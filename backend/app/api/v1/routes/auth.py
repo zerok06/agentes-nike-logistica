@@ -2,12 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_central_db
+from app.core.config import settings
 from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
     hash_password,
     verify_password,
+)
+from app.core.keycloak import (
+    exchange_code_for_token,
+    get_or_create_user_from_keycloak,
+    verify_keycloak_token,
 )
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
@@ -16,6 +22,7 @@ from app.api.deps.auth import get_current_user, require_roles, require_permissio
 from app.schemas.auth import (
     AuthenticatedUser,
     ChangePasswordRequest,
+    KeycloakExchangeCode,
     RefreshTokenRequest,
     ResetPasswordRequest,
     TokenResponse,
@@ -69,6 +76,49 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email o contraseña incorrectos",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuario desactivado. Contacta al administrador.",
+        )
+
+    return _build_token_response(user)
+
+
+@router.post("/keycloak/exchange", response_model=TokenResponse)
+async def keycloak_exchange(
+    payload: KeycloakExchangeCode,
+    db: AsyncSession = Depends(get_central_db),
+) -> TokenResponse:
+    if not settings.keycloak_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Keycloak no está habilitado",
+        )
+
+    token_data = await exchange_code_for_token(payload.code, payload.redirect_uri)
+    if token_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Código de autorización inválido o expirado",
+        )
+
+    access_token = token_data.get("access_token", "")
+    token_info = await verify_keycloak_token(access_token)
+    if token_info is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token de Keycloak inválido",
+        )
+
+    try:
+        user, _ = await get_or_create_user_from_keycloak(token_info, db)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
         )
 
     if not user.is_active:

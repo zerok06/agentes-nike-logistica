@@ -70,6 +70,11 @@ class ResetPasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=6, max_length=128)
 
 
+class KeycloakExchangeCode(BaseModel):
+    code: str
+    redirect_uri: str
+
+
 class TokenData(BaseModel):
     user_id: int | None = None
     email: str | None = None
