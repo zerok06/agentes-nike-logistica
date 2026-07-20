@@ -7,7 +7,7 @@ export function useIsMobile(): boolean {
     const check = () => {
       const ua = navigator.userAgent || navigator.vendor || ''
       const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(ua.toLowerCase())
-      const isMobileWidth = window.innerWidth <= 768
+      const isMobileWidth = window.innerWidth < 1024
       setIsMobile(isMobileUA || isMobileWidth)
     }
 

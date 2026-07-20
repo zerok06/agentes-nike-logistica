@@ -37,7 +37,8 @@ export const ProductRegistrationPage: React.FC = () => {
 
   const generateInternalBarcode = () => {
     const random = Math.floor(1000 + Math.random() * 9000)
-    setForm(prev => ({ ...prev, barcode: `INT-${random}` }))
+    const whId = distributions.length > 0 ? distributions[0].warehouse_id : ''
+    setForm(prev => ({ ...prev, barcode: `INT-${whId}-${random}` }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

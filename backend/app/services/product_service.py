@@ -142,6 +142,7 @@ class ProductService:
 
         for dist in warehouse_distribution:
             inventory = Inventory(
+                organization_id=product_data["organization_id"],
                 product_id=product.product_id,
                 warehouse_id=dist["warehouse_id"],
                 stock_qty=dist.get("stock_qty", 0),

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -76,6 +76,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ? 'Supervisor'
         : 'Operador'
 
+  // Force expanded when sidebar opens on mobile
+  useEffect(() => {
+    if (mobileOpen && isMobile && collapsed) {
+      setCollapsed(false)
+    }
+  }, [mobileOpen, isMobile, collapsed, setCollapsed])
+
   return (
     <>
       {/* Mobile overlay */}
@@ -93,14 +100,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <motion.aside
         animate={{
-          width: collapsed ? 80 : 260,
           x: isMobile && !mobileOpen ? -300 : 0,
         }}
         className={cn(
-          'fixed lg:sticky top-0 left-0 h-screen z-50 glass-panel border-r border-white/10 flex flex-col transition-all',
+          'fixed lg:sticky top-0 left-0 h-screen z-50 glass-panel border-r border-white/10 flex flex-col transition-all duration-300',
           isMobile && !mobileOpen && 'pointer-events-none',
+          isMobile ? 'w-[80vw] max-w-sm' : collapsed ? 'w-20' : 'w-64',
         )}
-        style={{ width: collapsed ? 80 : 260 }}
       >
         {/* Logo */}
         <div className="flex items-center justify-between gap-3 p-6 border-b border-white/10 h-[70px]">
@@ -125,7 +131,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {isMobile && (
             <button
               onClick={() => setMobileOpen(false)}
-              className="p-2 rounded-xl hover:bg-white/10 text-white/60 transition-colors"
+              className="p-3 rounded-xl hover:bg-white/10 text-white/60 transition-colors active:scale-95"
             >
               <X className="w-5 h-5" />
             </button>
@@ -142,7 +148,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 to={item.path}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-3 rounded-xl transition-all group relative',
+                  'flex items-center gap-3 px-3 py-3 rounded-xl transition-all group relative active:scale-[0.98]',
                   isActive
                     ? 'bg-primary/10 border border-primary/20 text-white shadow-[0_0_15px_rgba(255,255,255,0.06)]'
                     : 'text-white/50 hover:text-white hover:bg-white/5 border border-transparent',

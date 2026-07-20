@@ -433,7 +433,8 @@ export const InventoryPage: React.FC = () => {
 
   const generateInternalBarcode = () => {
     const random = Math.floor(1000 + Math.random() * 9000)
-    updateProductForm('barcode', `INT-${random}`)
+    const whId = distributions.length > 0 ? distributions[0].warehouse_id : ''
+    updateProductForm('barcode', `INT-${whId}-${random}`)
   }
 
   const handleAddProduct = async (e: React.FormEvent) => {

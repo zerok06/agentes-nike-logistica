@@ -4,6 +4,7 @@ import { Truck, Activity } from 'lucide-react'
 import { Card } from '../ui/Card'
 import { ChartSkeleton } from '../metrics/MetricCardSkeleton'
 import { metricsService } from '../../services/metrics.service'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import type { ShipmentStats } from '../../types/metrics'
 
 const STATUS_FILTERS = [
@@ -14,6 +15,7 @@ const STATUS_FILTERS = [
 ]
 
 export const ShipmentDonut: React.FC = () => {
+  const isMobile = useIsMobile()
   const [data, setData] = useState<ShipmentStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeIndex, setActiveIndex] = useState<number>(0)
@@ -83,7 +85,7 @@ export const ShipmentDonut: React.FC = () => {
             <button
               key={f.value}
               onClick={() => setStatusFilter(f.value)}
-              className={`px-2 py-0.5 text-[9px] font-bold rounded-md transition-all ${
+              className={`px-2 md:px-2 py-1 md:py-0.5 text-[10px] md:text-[9px] font-bold rounded-md transition-all ${
                 statusFilter === f.value
                   ? 'bg-nikeOrange text-white shadow-sm'
                   : 'text-white/40 hover:text-white/80'
@@ -96,7 +98,7 @@ export const ShipmentDonut: React.FC = () => {
       }
     >
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-        <div className="md:col-span-7 h-[200px] relative flex items-center justify-center bg-white/[0.02] rounded-2xl border border-white/5 p-2">
+        <div className={`md:col-span-7 relative flex items-center justify-center bg-white/[0.02] rounded-2xl border border-white/5 p-2 ${isMobile ? 'h-[160px]' : 'h-[200px]'}`}>
           <div className="absolute top-2 left-3 text-[10px] font-mono text-white/70 uppercase tracking-widest flex items-center gap-1">
             <Activity className="w-3 h-3 text-white/40" /> Monitoreo Activo
           </div>
@@ -140,7 +142,7 @@ export const ShipmentDonut: React.FC = () => {
 
           {activeItem && (
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-              <span className="text-[10px] font-mono text-slate-400 uppercase max-w-[80px] truncate">{activeItem.name}</span>
+              <span className="text-[10px] font-mono text-slate-400 uppercase max-w-[100px] md:max-w-[80px] truncate">{activeItem.name}</span>
               <span className="text-lg font-extrabold text-white mt-0.5">{activeItem.value}</span>
               <span className="text-[10px] font-bold text-white/80">{percentage}%</span>
             </div>
@@ -151,7 +153,7 @@ export const ShipmentDonut: React.FC = () => {
           <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-1">
             Resumen ({totalShipments} Total)
           </div>
-          <div className="space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
+          <div className="space-y-1.5 max-h-[120px] md:max-h-[180px] overflow-y-auto pr-1">
             {chartData.map((item, index) => {
               const itemPct = totalShipments > 0 ? ((item.value / totalShipments) * 100).toFixed(0) : 0
               const isSelected = index === activeIndex

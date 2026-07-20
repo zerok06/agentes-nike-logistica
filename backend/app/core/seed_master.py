@@ -208,6 +208,10 @@ async def run_migrations():
         "[-13.0,-77.0],[-12.5,-77.2],[-12.046373,-77.042754]]'::jsonb "
         "WHERE NOT EXISTS (SELECT 1 FROM nike_logistica.routes "
         "WHERE origin_city = 'Arequipa' AND destination_city = 'Lima')",
+
+        # Sincronizar secuencia de products si está desincronizada
+        "SELECT setval('nike_logistica.products_product_id_seq', "
+        "COALESCE((SELECT MAX(product_id) FROM nike_logistica.products), 0) + 1, false)",
     ]
 
     async with central_engine.connect() as conn:

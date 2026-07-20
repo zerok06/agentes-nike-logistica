@@ -56,9 +56,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div className="absolute inset-0 dot-matrix" />
         <div className="absolute inset-0 tech-grid" />
-        {/* Spotlights: Stark White top-right, Metallic Silver bottom-left */}
-        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-white/4 rounded-full blur-[150px]" />
-        <div className="absolute -bottom-40 -left-40 w-[750px] h-[750px] bg-slate-500/4 rounded-full blur-[180px]" />
+        {/* Spotlights: hidden on mobile for performance */}
+        <div className="hidden lg:block absolute -top-40 -right-40 w-[600px] h-[600px] bg-white/4 rounded-full blur-[150px]" />
+        <div className="hidden lg:block absolute -bottom-40 -left-40 w-[750px] h-[750px] bg-slate-500/4 rounded-full blur-[180px]" />
       </div>
 
       <Sidebar

@@ -47,11 +47,11 @@ export const ShipmentRoutesTable: React.FC = () => {
           <table className="w-full text-left border-collapse text-xs md:text-sm">
             <thead>
               <tr className="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px]">
-                <th className="py-3 px-2">Nombre de Canal</th>
-                <th className="py-3 px-2">Trayecto (Origen ➔ Destino)</th>
-                <th className="py-3 px-2 text-right">Distancia</th>
-                <th className="py-3 px-2 text-right">Tiempo Est.</th>
-                <th className="py-3 px-2">Courier / Proveedor</th>
+                <th className="py-3 px-2">Canal</th>
+                <th className="py-3 px-2">Trayecto</th>
+                <th className="hidden md:table-cell py-3 px-2 text-right">Distancia</th>
+                <th className="hidden md:table-cell py-3 px-2 text-right">Tiempo Est.</th>
+                <th className="py-3 px-2">Courier</th>
               </tr>
             </thead>
             <tbody>
@@ -74,10 +74,10 @@ export const ShipmentRoutesTable: React.FC = () => {
                       <span>{route.destination}</span>
                     </div>
                   </td>
-                  <td className="py-3.5 px-2 text-right font-mono font-bold text-white/80">
+                  <td className="py-3.5 px-2 hidden md:table-cell text-right font-mono font-bold text-white/80">
                     {route.distance_km} km
                   </td>
-                  <td className="py-3.5 px-2 text-right font-semibold text-white/80">
+                  <td className="py-3.5 px-2 hidden md:table-cell text-right font-semibold text-white/80">
                     {route.estimated_hours} hrs
                   </td>
                   <td className="py-3.5 px-2">

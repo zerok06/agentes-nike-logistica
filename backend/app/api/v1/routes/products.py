@@ -128,13 +128,18 @@ async def create_product(
         warehouse_id = user.warehouse_id
 
     if data.barcode:
-        if not re.match(r"^\d{13}$", data.barcode):
-            raise HTTPException(status_code=400, detail="El codigo de barras debe tener 13 digitos (EAN-13)")
-        digits = [int(d) for d in data.barcode]
-        checksum = sum(d * (1 if i % 2 == 0 else 3) for i, d in enumerate(digits[:-1]))
-        expected = (10 - (checksum % 10)) % 10
-        if expected != digits[-1]:
-            raise HTTPException(status_code=400, detail="El codigo de barras EAN-13 no es valido (checksum incorrecto)")
+        # Códigos alfanuméricos (ej: INT-1-3847) — sin validación de dígitos
+        if re.match(r"^[A-Za-z]", data.barcode):
+            pass
+        elif not re.match(r"^\d{8,14}$", data.barcode):
+            raise HTTPException(status_code=400, detail="El codigo de barras debe tener entre 8 y 14 digitos numericos, o ser alfanumerico")
+        elif len(data.barcode) == 13:
+            # Validar checksum solo para EAN-13 exacto
+            digits = [int(d) for d in data.barcode]
+            checksum = sum(d * (1 if i % 2 == 0 else 3) for i, d in enumerate(digits[:-1]))
+            expected = (10 - (checksum % 10)) % 10
+            if expected != digits[-1]:
+                raise HTTPException(status_code=400, detail="El codigo de barras EAN-13 no es valido (checksum incorrecto)")
         existing = await db.execute(select(Product).where(Product.barcode == data.barcode))
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=409, detail="Ya existe un producto con ese codigo de barras")
@@ -173,6 +178,9 @@ async def create_product(
     }
 
     if distribution:
+        for dist in distribution:
+            if "warehouse_id" not in dist or not isinstance(dist["warehouse_id"], int):
+                raise HTTPException(status_code=400, detail="Cada almacen en la distribucion debe tener un warehouse_id valido")
         service = ProductService(db)
         result = await service.create_with_distribution(product_data, distribution)
         return result

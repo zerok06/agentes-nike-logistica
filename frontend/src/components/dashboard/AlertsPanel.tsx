@@ -31,7 +31,7 @@ export const AlertsPanel: React.FC = () => {
       title={`Alertas Críticas (${criticalAlerts.length})`}
       icon={<AlertTriangle className="w-5 h-5 text-red-400" />}
     >
-      <div className="space-y-2 max-h-[300px] overflow-y-auto">
+      <div className="space-y-2 max-h-[200px] md:max-h-[300px] overflow-y-auto">
         {criticalAlerts.length === 0 ? (
           <p className="text-sm text-white/30 text-center py-8">No hay alertas activas.</p>
         ) : (

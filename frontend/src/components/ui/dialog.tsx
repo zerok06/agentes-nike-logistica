@@ -46,7 +46,7 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       <div className={cn(
-        "w-full glass-panel rounded-3xl p-6 shadow-2xl relative",
+        "w-full glass-panel rounded-3xl p-4 sm:p-6 shadow-2xl relative",
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         "data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
         width,

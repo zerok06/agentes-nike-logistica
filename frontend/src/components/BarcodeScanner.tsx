@@ -12,9 +12,12 @@ interface BarcodeScannerProps {
 export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose }) => {
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [scanned, setScanned] = useState<string | null>(null)
   const [isStarting, setIsStarting] = useState(true)
+  const [manualMode, setManualMode] = useState(false)
+  const [manualCode, setManualCode] = useState('')
 
   useEffect(() => {
     let mounted = true
@@ -41,12 +44,25 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
     }
 
     const startScanner = async () => {
+      // Check secure context first
+      if (!window.isSecureContext) {
+        if (mounted) {
+          setError('La cámara requiere HTTPS o localhost. Ingresa el código manualmente.')
+          setIsStarting(false)
+          setManualMode(true)
+          setTimeout(() => inputRef.current?.focus(), 100)
+        }
+        return
+      }
+
       try {
         const cameras = await Html5Qrcode.getCameras()
         if (!cameras || cameras.length === 0) {
           if (mounted) {
             setError('No se encontro ninguna camara en este dispositivo.')
             setIsStarting(false)
+            setManualMode(true)
+            setTimeout(() => inputRef.current?.focus(), 100)
           }
           return
         }
@@ -99,6 +115,15 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
       stopScanner()
     }
   }, [onScan])
+
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const code = manualCode.trim()
+    if (code) {
+      setScanned(code)
+      setTimeout(() => onScan(code), 400)
+    }
+  }
 
   const handleClose = () => {
     const scanner = scannerRef.current
@@ -188,15 +213,43 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
 
       {/* Bottom area */}
       <div className="shrink-0 p-6 pb-8 flex flex-col items-center gap-4 z-10">
-        {error ? (
+        {manualMode ? (
+          <>
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 max-w-sm w-full">
+              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-300">{error}</p>
+            </div>
+            <form onSubmit={handleManualSubmit} className="flex gap-2 max-w-sm w-full">
+              <input
+                ref={inputRef}
+                type="text"
+                value={manualCode}
+                onChange={(e) => setManualCode(e.target.value)}
+                placeholder="Ingresa el código de barras..."
+                className="flex-1 px-4 py-2.5 rounded-xl bg-[#0f0f13] border border-white/10 text-white/90 text-sm font-mono focus:outline-none focus:border-nikeOrange/50 transition-colors"
+              />
+              <Button type="submit" disabled={!manualCode.trim()}>
+                Confirmar
+              </Button>
+            </form>
+            <Button variant="secondary" onClick={handleClose} className="max-w-sm w-full">
+              Cerrar
+            </Button>
+          </>
+        ) : error ? (
           <>
             <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 max-w-sm w-full">
               <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
               <p className="text-xs text-red-300">{error}</p>
             </div>
-            <Button onClick={handleClose} className="w-full max-w-sm">
-              Cerrar
-            </Button>
+            <div className="flex gap-2 max-w-sm w-full">
+              <Button onClick={() => { setManualMode(true); setTimeout(() => inputRef.current?.focus(), 100) }} variant="secondary" className="flex-1">
+                Ingresar manualmente
+              </Button>
+              <Button onClick={handleClose} className="flex-1">
+                Cerrar
+              </Button>
+            </div>
           </>
         ) : (
           <p className="text-sm text-white/50 text-center flex items-center gap-2">

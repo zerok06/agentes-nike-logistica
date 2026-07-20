@@ -38,10 +38,10 @@ export const WarehousePerformanceTable: React.FC = () => {
         <table className="w-full text-left border-collapse text-xs md:text-sm">
           <thead>
             <tr className="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px]">
-              <th className="py-3 px-2 font-mono">Sede / Ubicación</th>
+              <th className="py-3 px-2 font-mono">Sede</th>
               <th className="py-3 px-2 text-right">Productos</th>
-              <th className="py-3 px-2 text-right">Stock Total</th>
-              <th className="py-3 px-2 w-48">Utilización de Capacidad</th>
+              <th className="py-3 px-2 text-right">Stock</th>
+              <th className="hidden md:table-cell py-3 px-2 w-48">Utilización</th>
               <th className="py-3 px-2 text-right">Estado</th>
             </tr>
           </thead>
@@ -57,10 +57,10 @@ export const WarehousePerformanceTable: React.FC = () => {
                 >
                   <td className="py-3.5 px-2">
                     <div className="flex items-center gap-2">
-                      <Warehouse className="w-4 h-4 text-white/60" />
+                      <Warehouse className="w-4 h-4 text-white/60 shrink-0" />
                       <div>
                         <p className="font-bold text-white/90">{w.warehouse_name}</p>
-                        <p className="text-[10px] text-white/40 mt-0.5">{w.city || 'Sede Regional'}</p>
+                        <p className="hidden md:block text-[10px] text-white/40 mt-0.5">{w.city || 'Sede Regional'}</p>
                       </div>
                     </div>
                   </td>
@@ -70,7 +70,7 @@ export const WarehousePerformanceTable: React.FC = () => {
                   <td className="py-3.5 px-2 text-right font-mono font-bold text-white/90">
                     {w.total_stock.toLocaleString()}
                   </td>
-                  <td className="py-3.5 px-2">
+                  <td className="hidden md:table-cell py-3.5 px-2">
                     <div className="space-y-1">
                       <Progress
                         value={utilPct}

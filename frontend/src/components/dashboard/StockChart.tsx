@@ -5,6 +5,7 @@ import { Card } from '../ui/Card'
 import { useDashboardFilters } from '../../context/DashboardFilterContext'
 import { metricsService } from '../../services/metrics.service'
 import { ChartSkeleton } from '../metrics/MetricCardSkeleton'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import type { StockByWarehouse } from '../../types/metrics'
 
 const CustomTooltip = ({ active, payload }: any) => {
@@ -38,6 +39,7 @@ const CATEGORY_COLORS = [
 ]
 
 export const StockChart: React.FC = () => {
+  const isMobile = useIsMobile()
   const { filters } = useDashboardFilters()
   const [data, setData] = useState<StockByWarehouse[]>([])
   const [activeWarehouse, setActiveWarehouse] = useState<StockByWarehouse | null>(null)
@@ -101,7 +103,7 @@ export const StockChart: React.FC = () => {
       className="w-full"
     >
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-7 bg-[#121215]/80 backdrop-blur-md rounded-3xl p-5 border-t border-white/15 border-x border-white/10 border-b border-black/40 relative shadow-[0_15px_35px_rgba(0,0,0,0.6)]">
+        <div className="lg:col-span-7 bg-[#121215]/80 backdrop-blur-md rounded-3xl p-3 md:p-5 border-t border-white/15 border-x border-white/10 border-b border-black/40 relative shadow-[0_15px_35px_rgba(0,0,0,0.6)]">
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-mono text-white uppercase tracking-widest flex items-center gap-2">
               <Layers className="w-4 h-4 text-white/60" /> Stock por Sede
@@ -111,7 +113,7 @@ export const StockChart: React.FC = () => {
             </span>
           </div>
 
-          <div className="w-full h-[240px]">
+          <div className={isMobile ? 'w-full h-[160px]' : 'w-full h-[240px]'}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={data}
@@ -143,7 +145,7 @@ export const StockChart: React.FC = () => {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
                 <XAxis type="number" stroke="rgba(255,255,255,0.4)" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis dataKey="name" type="category" stroke="rgba(255,255,255,0.9)" fontSize={13} fontWeight={600} tickLine={false} axisLine={false} width={100} />
+                <YAxis dataKey="name" type="category" stroke="rgba(255,255,255,0.9)}" fontSize={isMobile ? 11 : 13} fontWeight={600} tickLine={false} axisLine={false} width={isMobile ? 70 : 100} />
                 <Tooltip cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }} content={<CustomTooltip />} />
                 <Bar dataKey="normal" name="Stock Normal" fill="url(#barNormal)" stackId="a" filter="url(#barShadow)" barSize={22} />
                 <Bar dataKey="critical" name="Stock Crítico" fill="url(#barCritical)" stackId="a" radius={[0, 6, 6, 0]} filter="url(#barShadow)" barSize={22} />
@@ -157,7 +159,7 @@ export const StockChart: React.FC = () => {
           </div>
         </div>
 
-        <div className="lg:col-span-5 bg-[#121215]/80 backdrop-blur-md rounded-3xl p-5 border-t border-white/15 border-x border-white/10 border-b border-black/40 relative shadow-[0_15px_35px_rgba(0,0,0,0.6)]">
+        <div className="lg:col-span-5 bg-[#121215]/80 backdrop-blur-md rounded-3xl p-3 md:p-5 border-t border-white/15 border-x border-white/10 border-b border-black/40 relative shadow-[0_15px_35px_rgba(0,0,0,0.6)]">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <span className="text-xs font-mono text-white uppercase tracking-widest flex items-center gap-2">
               <PieIcon className="w-4 h-4 text-white/60" /> Desglose por Categoría
@@ -166,7 +168,7 @@ export const StockChart: React.FC = () => {
               <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/5 gap-0.5">
                 <button
                   onClick={() => setChartMode('total')}
-                  className={`px-2.5 py-0.5 text-[9px] font-extrabold rounded-md transition-all ${
+                  className={`px-2 md:px-2.5 py-1 md:py-0.5 text-[10px] md:text-[9px] font-extrabold rounded-md transition-all ${
                     chartMode === 'total' ? 'bg-nikeOrange text-white shadow-sm' : 'text-white/40 hover:text-white/80'
                   }`}
                 >
@@ -174,7 +176,7 @@ export const StockChart: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setChartMode('critical')}
-                  className={`px-2.5 py-0.5 text-[9px] font-extrabold rounded-md transition-all ${
+                  className={`px-2 md:px-2.5 py-1 md:py-0.5 text-[10px] md:text-[9px] font-extrabold rounded-md transition-all ${
                     chartMode === 'critical' ? 'bg-red-500 text-white shadow-sm' : 'text-white/40 hover:text-white/80'
                   }`}
                 >
@@ -187,7 +189,7 @@ export const StockChart: React.FC = () => {
             </div>
           </div>
 
-          <div className="w-full h-[180px] flex items-center justify-center relative">
+          <div className={isMobile ? 'w-full h-[140px]' : 'w-full h-[180px]'}>
             {pieData.length === 0 ? (
               <div className="text-center p-4">
                 <p className="text-sm font-semibold text-white/50">Stock Totalmente Óptimo</p>
@@ -220,7 +222,7 @@ export const StockChart: React.FC = () => {
             )}
           </div>
 
-          <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/5 text-center mt-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-3 border-t border-white/5 text-center mt-3">
             {(activeWarehouse.breakdown || []).map((item, idx) => {
               const hasCritical = item.critical > 0;
               return (

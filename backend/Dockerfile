@@ -18,6 +18,9 @@ COPY pyproject.toml .
 # Install Python dependencies
 RUN pip install --no-cache-dir .
 
+# Pre-download embedding model to avoid downloads at runtime
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2')"
+
 # Copy backend code
 COPY . .
 

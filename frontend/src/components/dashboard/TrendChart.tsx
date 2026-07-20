@@ -4,6 +4,7 @@ import { Activity, Calendar } from 'lucide-react'
 import { Card } from '../ui/Card'
 import { ChartSkeleton } from '../metrics/MetricCardSkeleton'
 import { metricsService } from '../../services/metrics.service'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import type { MovementTrend } from '../../types/metrics'
 
 const RANGE_OPTIONS = [
@@ -14,6 +15,7 @@ const RANGE_OPTIONS = [
 ]
 
 export const TrendChart: React.FC = () => {
+  const isMobile = useIsMobile()
   const [data, setData] = useState<MovementTrend[]>([])
   const [loading, setLoading] = useState(true)
   const [range, setRange] = useState(7)
@@ -42,7 +44,7 @@ export const TrendChart: React.FC = () => {
               <button
                 key={opt.value}
                 onClick={() => setRange(opt.value)}
-                className={`px-2 py-0.5 text-[9px] font-bold rounded-md transition-all ${
+                className={`px-2 md:px-2 py-1 md:py-0.5 text-[10px] md:text-[9px] font-bold rounded-md transition-all ${
                   range === opt.value
                     ? 'bg-nikeOrange text-white shadow-sm'
                     : 'text-white/40 hover:text-white/80'
@@ -55,7 +57,7 @@ export const TrendChart: React.FC = () => {
         </div>
       }
     >
-      <ResponsiveContainer width="100%" height={260}>
+      <ResponsiveContainer width="100%" height={isMobile ? 180 : 260}>
         <AreaChart data={data}>
           <defs>
             <linearGradient id="trendEntradas" x1="0" y1="0" x2="0" y2="1">
