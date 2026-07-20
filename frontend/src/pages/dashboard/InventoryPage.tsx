@@ -60,6 +60,7 @@ import { toast } from 'sonner'
 import TrackingMap from '../../components/tracking/TrackingMap'
 import { useAuthStore } from '../../store/useAuthStore'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import api from '../../services/api'
 import { inventoryService } from '../../services/inventory.service'
 import type { StockItem, TransferRequest } from '../../types/inventory'
 import type { ProductDetail, WarehouseDistribution } from '../../types/product'
@@ -87,6 +88,7 @@ export const InventoryPage: React.FC = () => {
   const { hasRole } = useAuthStore()
   const isMobile = useIsMobile()
   const [stock, setStock] = useState<StockItem[]>([])
+  const [allWarehouses, setAllWarehouses] = useState<{id: number; name: string; city: string | null}[]>([])
   const [loading, setLoading] = useState(true)
 
   // Search & filter
@@ -107,16 +109,41 @@ export const InventoryPage: React.FC = () => {
   const [fromWarehouse, setFromWarehouse] = useState('')
   const [toWarehouse, setToWarehouse] = useState('')
   const [transferQty, setTransferQty] = useState(5)
+  const [vehicleType, setVehicleType] = useState('truck')
   const [transferError, setTransferError] = useState<string | null>(null)
   const [transferSuccess, setTransferSuccess] = useState<string | null>(null)
+  const [transferring, setTransferring] = useState(false)
 
   // Product-specific transfer (from SlidePanel)
   const [productTransferOpen, setProductTransferOpen] = useState(false)
   const [ptOrigin, setPtOrigin] = useState('')
   const [ptDestination, setPtDestination] = useState('')
   const [ptQty, setPtQty] = useState(5)
+  const [ptVehicleType, setPtVehicleType] = useState('truck')
   const [ptError, setPtError] = useState<string | null>(null)
   const [ptSuccess, setPtSuccess] = useState<string | null>(null)
+  const [ptTransferring, setPtTransferring] = useState(false)
+
+  const resetTransferForm = () => {
+    setTransferProduct('')
+    setFromWarehouse('')
+    setToWarehouse('')
+    setTransferQty(5)
+    setVehicleType('truck')
+    setTransferError(null)
+    setTransferSuccess(null)
+    setTransferring(false)
+  }
+
+  const resetPtForm = () => {
+    setPtOrigin('')
+    setPtDestination('')
+    setPtQty(5)
+    setPtVehicleType('truck')
+    setPtError(null)
+    setPtSuccess(null)
+    setPtTransferring(false)
+  }
 
   // Add Product form state
   const [showScanner, setShowScanner] = useState(false)
@@ -150,6 +177,10 @@ export const InventoryPage: React.FC = () => {
   useEffect(() => {
     fetchStock()
   }, [fetchStock])
+
+  useEffect(() => {
+    api.get('/metrics/warehouses').then(r => setAllWarehouses(r.data)).catch(() => {})
+  }, [])
 
   // Fetch product detail when SKU is selected
   useEffect(() => {
@@ -214,9 +245,11 @@ export const InventoryPage: React.FC = () => {
     const items = stock.filter((item) => item.sku === selectedSku)
     if (items.length === 0) return null
     return {
+      product_id: items[0].product_id,
       sku: items[0].sku,
       product_name: items[0].product_name,
       warehouses: items.map((item) => ({
+        warehouse_id: item.warehouse_id,
         warehouse_name: item.warehouse_name,
         city: item.city,
         stock_qty: item.stock_qty,
@@ -229,12 +262,12 @@ export const InventoryPage: React.FC = () => {
     }
   }, [selectedSku, stock])
 
-  // Available products & warehouses for transfer
+  // Available products for transfer (deduplicated by product_id)
   const transferProducts = useMemo(() => {
-    const seen = new Set<string>()
+    const seen = new Set<number>()
     return stock.filter((item) => {
-      if (seen.has(item.sku)) return false
-      seen.add(item.sku)
+      if (seen.has(item.product_id)) return false
+      seen.add(item.product_id)
       return true
     })
   }, [stock])
@@ -242,13 +275,15 @@ export const InventoryPage: React.FC = () => {
   // Stock breakdown for selected transfer product
   const selectedTransferStock = useMemo(() => {
     if (!transferProduct) return null
-    const selectedItem = stock.find(s => String(s.inventory_id) === transferProduct)
-    if (!selectedItem) return null
-    const items = stock.filter(s => s.sku === selectedItem.sku)
+    const pid = parseInt(transferProduct)
+    const items = stock.filter(s => s.product_id === pid)
+    if (items.length === 0) return null
     return {
+      product_id: pid,
       sku: items[0].sku,
       product_name: items[0].product_name,
       warehouses: items.map(item => ({
+        warehouse_id: item.warehouse_id,
         warehouse_name: item.warehouse_name,
         city: item.city,
         stock_qty: item.stock_qty,
@@ -261,19 +296,8 @@ export const InventoryPage: React.FC = () => {
   }, [transferProduct, stock])
 
   const warehouseOptions = useMemo(() => {
-    const seen = new Set<string>()
-    return stock
-      .filter((item) => {
-        if (seen.has(item.warehouse_name)) return false
-        seen.add(item.warehouse_name)
-        return true
-      })
-      .map((item, index) => ({
-        id: index + 1,
-        name: item.warehouse_name,
-        city: item.city,
-      }))
-  }, [stock])
+    return allWarehouses.map(w => ({ id: w.id, name: w.name, city: w.city }))
+  }, [allWarehouses])
 
   // Transfer handlers
   const handleTransfer = async (e: React.FormEvent) => {
@@ -293,32 +317,44 @@ export const InventoryPage: React.FC = () => {
       return
     }
 
-    const maxStock = selectedTransferStock?.warehouses.find(
-      w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === fromWarehouse
-    )?.stock_qty || 0
-
-    if (transferQty > maxStock) {
-      setTransferError(`Solo hay ${maxStock} unidades disponibles en el almacén origen.`)
-      toast.error(`Solo hay ${maxStock} unidades disponibles.`)
-      return
-    }
-
+    setTransferring(true)
     try {
+      // Refrescar stock antes de validar
+      const freshStock = await inventoryService.getStock()
+      const freshSelected = freshStock.filter(s => s.product_id === parseInt(transferProduct))
+      const freshWh = freshSelected.find(
+        w => w.warehouse_id === parseInt(fromWarehouse)
+      )
+      const freshMaxStock = freshWh?.stock_qty || 0
+
+      if (transferQty > freshMaxStock) {
+        setTransferError(`Stock actualizado: solo hay ${freshMaxStock} unidades disponibles en el almacén origen.`)
+        toast.error(`Stock actualizado: solo hay ${freshMaxStock} unidades.`)
+        setTransferring(false)
+        return
+      }
+
       const data: TransferRequest = {
         product_id: parseInt(transferProduct),
         from_warehouse_id: parseInt(fromWarehouse),
         to_warehouse_id: parseInt(toWarehouse),
         quantity: transferQty,
+        vehicle_type: vehicleType,
       }
       const result = await inventoryService.transferStock(data)
-      setTransferSuccess(result.message)
-      toast.success(result.message)
-      fetchStock()
-      setTimeout(() => setTransferOpen(false), 1500)
+      setTransferSuccess(`${result.message} Código: ${result.tracking_code}`)
+      toast.success(`${result.message} Código: ${result.tracking_code}`)
+      setStock(freshStock)
+      setTimeout(() => {
+        setTransferOpen(false)
+        resetTransferForm()
+      }, 1500)
     } catch (err: any) {
       const msg = err.response?.data?.detail || 'Error al procesar la transferencia.'
       setTransferError(msg)
       toast.error(msg)
+    } finally {
+      setTransferring(false)
     }
   }
 
@@ -345,37 +381,44 @@ export const InventoryPage: React.FC = () => {
       return
     }
 
-    const maxStock = selectedProductStock?.warehouses.find(
-      w => w.warehouse_name === warehouseOptions.find(o => String(o.id) === ptOrigin)?.name
-    )?.stock_qty || 0
-
-    if (ptQty > maxStock) {
-      setPtError(`Solo hay ${maxStock} unidades disponibles en el almacén origen.`)
-      toast.error(`Solo hay ${maxStock} unidades disponibles.`)
-      return
-    }
-
+    setPtTransferring(true)
     try {
-      const stockItem = stock.find((s) => s.sku === selectedSku)
+      // Refrescar stock antes de validar
+      const freshStock = await inventoryService.getStock()
+      const freshWh = freshStock.find(
+        s => s.product_id === (selectedProductStock?.product_id || 0) &&
+             s.warehouse_id === parseInt(ptOrigin)
+      )
+      const freshMaxStock = freshWh?.stock_qty || 0
+
+      if (ptQty > freshMaxStock) {
+        setPtError(`Stock actualizado: solo hay ${freshMaxStock} unidades disponibles en el almacén origen.`)
+        toast.error(`Stock actualizado: solo hay ${freshMaxStock} unidades.`)
+        setPtTransferring(false)
+        return
+      }
+
       const data: TransferRequest = {
-        product_id: stockItem?.inventory_id || 0,
+        product_id: selectedProductStock?.product_id || 0,
         from_warehouse_id: parseInt(ptOrigin),
         to_warehouse_id: parseInt(ptDestination),
         quantity: ptQty,
+        vehicle_type: ptVehicleType,
       }
       const result = await inventoryService.transferStock(data)
-      setPtSuccess(result.message)
-      toast.success(result.message)
-      fetchStock()
+      setPtSuccess(`${result.message} Código: ${result.tracking_code}`)
+      toast.success(`${result.message} Código: ${result.tracking_code}`)
+      setStock(freshStock)
       setTimeout(() => {
         setProductTransferOpen(false)
-        setPtSuccess(null)
-        setPtError(null)
+        resetPtForm()
       }, 1500)
     } catch (err: any) {
       const msg = err.response?.data?.detail || 'Error al procesar la transferencia.'
       setPtError(msg)
       toast.error(msg)
+    } finally {
+      setPtTransferring(false)
     }
   }
 
@@ -854,8 +897,7 @@ export const InventoryPage: React.FC = () => {
       <Dialog open={transferOpen} onOpenChange={(open) => {
         setTransferOpen(open)
         if (!open) {
-          setTransferError(null)
-          setTransferSuccess(null)
+          resetTransferForm()
         }
       }}>
         <DialogContent width="max-w-4xl">
@@ -897,7 +939,7 @@ export const InventoryPage: React.FC = () => {
                       </SelectTrigger>
                       <SelectContent>
                         {transferProducts.map((p) => (
-                          <SelectItem key={p.sku} value={String(p.inventory_id)}>
+                          <SelectItem key={p.product_id} value={String(p.product_id)}>
                             {p.product_name}
                           </SelectItem>
                         ))}
@@ -950,7 +992,7 @@ export const InventoryPage: React.FC = () => {
                       onValueChange={(v) => {
                         setFromWarehouse(v)
                         const newMax = selectedTransferStock?.warehouses.find(
-                          w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === v
+                          w => String(w.warehouse_id) === v
                         )?.stock_qty || 0
                         setTransferQty(Math.min(5, newMax))
                       }}
@@ -962,17 +1004,14 @@ export const InventoryPage: React.FC = () => {
                       <SelectContent>
                         {selectedTransferStock?.warehouses
                           .filter(w => w.stock_qty > 0)
-                          .map((w) => {
-                            const whId = warehouseOptions.find(o => o.name === w.warehouse_name)?.id
-                            return (
-                              <SelectItem key={`tf-from-${whId}`} value={String(whId)}>
-                                <div className="flex items-center justify-between w-full gap-4">
-                                  <span>{w.warehouse_name}</span>
-                                  <span className="text-white/40 font-mono text-xs">{w.stock_qty} uds</span>
-                                </div>
-                              </SelectItem>
-                            )
-                          })}
+                          .map((w) => (
+                            <SelectItem key={`tf-from-${w.warehouse_id}`} value={String(w.warehouse_id)}>
+                              <div className="flex items-center justify-between w-full gap-4">
+                                <span>{w.warehouse_name}</span>
+                                <span className="text-white/40 font-mono text-xs">{w.stock_qty} uds</span>
+                              </div>
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1007,7 +1046,7 @@ export const InventoryPage: React.FC = () => {
                       {fromWarehouse && (
                         <span className="text-white/40 font-normal ml-2">
                           (max: {selectedTransferStock?.warehouses.find(
-                            w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === fromWarehouse
+                            w => String(w.warehouse_id) === fromWarehouse
                           )?.stock_qty || 0} uds)
                         </span>
                       )}
@@ -1017,23 +1056,50 @@ export const InventoryPage: React.FC = () => {
                     value={transferQty}
                     onChange={(e) => {
                       const maxStock = selectedTransferStock?.warehouses.find(
-                        w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === fromWarehouse
+                        w => String(w.warehouse_id) === fromWarehouse
                       )?.stock_qty || 0
                       const val = parseInt(e.target.value) || 1
                       setTransferQty(Math.min(val, maxStock))
                     }}
                     min={1}
                     max={selectedTransferStock?.warehouses.find(
-                      w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === fromWarehouse
+                      w => String(w.warehouse_id) === fromWarehouse
                     )?.stock_qty || 0}
                     disabled={!fromWarehouse}
                   />
                   </div>
 
+                  {/* Tipo de vehiculo */}
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Transporte</Label>
+                    <Select value={vehicleType} onValueChange={setVehicleType}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Tipo de vehiculo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="truck">
+                          <div className="flex items-center gap-2">
+                            🚚 Camion — S/ 2.50/km
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="van">
+                          <div className="flex items-center gap-2">
+                            🚐 Camioneta — S/ 1.80/km
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="bike">
+                          <div className="flex items-center gap-2">
+                            🏍️ Moto — S/ 0.50/km
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   {/* Warning for critical/low origin */}
                   {fromWarehouse && (() => {
                     const originWh = selectedTransferStock?.warehouses.find(
-                      w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === fromWarehouse
+                      w => String(w.warehouse_id) === fromWarehouse
                     )
                     if (!originWh) return null
                     if (originWh.is_critical) {
@@ -1096,61 +1162,44 @@ export const InventoryPage: React.FC = () => {
                   <div className="flex gap-2 pt-2">
                     <button
                       type="button"
-                      onClick={() => setTransferOpen(false)}
+                      onClick={() => { resetTransferForm(); setTransferOpen(false); }}
                       className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-sm font-semibold transition-all"
                     >
                       Cancelar
                     </button>
-                    <Button type="submit" className="flex-1 bg-nikeOrange hover:bg-nikeOrange/80 text-white">
-                      <ClipboardList className="w-4 h-4 mr-2" />
-                      Confirmar Traslado
+                    <Button type="submit" className="flex-1 bg-nikeOrange hover:bg-nikeOrange/80 text-white" disabled={transferring}>
+                      {transferring ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Procesando...</>
+                      ) : (
+                        <><ClipboardList className="w-4 h-4 mr-2" /> Confirmar Traslado</>
+                      )}
                     </Button>
                   </div>
                 </div>
 
-                {/* Right column - tracking simulation */}
+                {/* Right column - tracking preview */}
                 <div className="h-full min-h-[250px]">
                   {fromWarehouse && toWarehouse && fromWarehouse !== toWarehouse ? (() => {
-                    const now = new Date()
-                    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
-                    const trackingId = `TRK-${dateStr}-${String(Math.floor(1000 + Math.random() * 9000))}`
-                    const fromCity = warehouseOptions.find(w => String(w.id) === fromWarehouse)?.city || ''
-                    const toCity = warehouseOptions.find(w => String(w.id) === toWarehouse)?.city || ''
-                    const hasDistance = fromCity && toCity
-                    let estimatedDays = 3
-                    if (hasDistance) {
-                      const routes: Record<string, Record<string, number>> = {
-                        'Lima': { 'Arequipa': 5, 'Trujillo': 3, 'Cusco': 6, 'Piura': 4, 'Lima': 1 },
-                        'Arequipa': { 'Lima': 5, 'Trujillo': 6, 'Cusco': 3, 'Piura': 7 },
-                        'Trujillo': { 'Lima': 3, 'Arequipa': 6, 'Cusco': 5, 'Piura': 2 },
-                        'Cusco': { 'Lima': 6, 'Arequipa': 3, 'Trujillo': 5, 'Piura': 7 },
-                        'Piura': { 'Lima': 4, 'Arequipa': 7, 'Trujillo': 2, 'Cusco': 7 },
-                      }
-                      estimatedDays = routes[fromCity]?.[toCity] || 4
-                    }
-                    const eta = new Date(now.getTime() + estimatedDays * 24 * 60 * 60 * 1000)
-                    const etaStr = eta.toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })
-                    const progressPercent = 15 + Math.floor(Math.random() * 20)
-
+                    const previewId = `Vista previa`
                     return (
                       <TrackingMap
                         fromId={fromWarehouse}
                         toId={toWarehouse}
                         warehouses={selectedTransferStock?.warehouses || []}
                         warehouseOptions={warehouseOptions}
-                      transferQty={transferQty}
-                        trackingId={trackingId}
-                        estimatedDays={estimatedDays}
-                        etaStr={etaStr}
-                        progressPercent={progressPercent}
+                        transferQty={transferQty}
+                        trackingId={previewId}
+                        estimatedDays={0}
+                        etaStr={''}
+                        progressPercent={0}
                       />
                     )
                   })() : (
                     <div className="h-full rounded-xl bg-white/[0.02] border border-dashed border-white/10 flex flex-col items-center justify-center text-center p-6">
                       <ArrowLeftRight className="w-8 h-8 text-white/20 mb-3" />
-                      <p className="text-xs text-white/30 font-medium">Simulacion de Traslado</p>
+                      <p className="text-xs text-white/30 font-medium">Vista previa del traslado</p>
                       <p className="text-[10px] text-white/20 mt-1 max-w-[180px]">
-                        Selecciona origen y destino en el formulario para ver la simulacion del traslado
+                        Selecciona origen y destino para ver la ruta en el mapa
                       </p>
                     </div>
                   )}
@@ -1537,8 +1586,7 @@ export const InventoryPage: React.FC = () => {
       <Dialog open={productTransferOpen} onOpenChange={(open) => {
         setProductTransferOpen(open)
         if (!open) {
-          setPtError(null)
-          setPtSuccess(null)
+          resetPtForm()
         }
       }}>
         <DialogContent width="max-w-4xl">
@@ -1571,7 +1619,7 @@ export const InventoryPage: React.FC = () => {
                     setPtOrigin(v)
                     setPtDestination('')
                     const newMax = selectedProductStock?.warehouses.find(
-                      w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === v
+                      w => String(w.warehouse_id) === v
                     )?.stock_qty || 0
                     setPtQty(Math.min(5, newMax))
                   }}>
@@ -1581,17 +1629,14 @@ export const InventoryPage: React.FC = () => {
                     <SelectContent>
                       {selectedProductStock?.warehouses
                         .filter((w) => w.stock_qty > 0)
-                        .map((w) => {
-                          const whId = warehouseOptions.find(o => o.name === w.warehouse_name)?.id
-                          return (
-                            <SelectItem key={`pt-from-${whId}`} value={String(whId)}>
-                              <div className="flex items-center justify-between w-full gap-4">
-                                <span>{w.warehouse_name}</span>
-                                <span className="text-white/40 font-mono text-xs">{w.stock_qty} uds</span>
-                              </div>
-                            </SelectItem>
-                          )
-                        })}
+                        .map((w) => (
+                          <SelectItem key={`pt-from-${w.warehouse_id}`} value={String(w.warehouse_id)}>
+                            <div className="flex items-center justify-between w-full gap-4">
+                              <span>{w.warehouse_name}</span>
+                              <span className="text-white/40 font-mono text-xs">{w.stock_qty} uds</span>
+                            </div>
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1599,7 +1644,7 @@ export const InventoryPage: React.FC = () => {
                 {/* Critical/low warning */}
                 {ptOrigin && (() => {
                   const originWh = selectedProductStock?.warehouses.find(
-                    w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === ptOrigin
+                    w => String(w.warehouse_id) === ptOrigin
                   )
                   if (!originWh) return null
                   if (originWh.is_critical) {
@@ -1639,16 +1684,13 @@ export const InventoryPage: React.FC = () => {
                       <SelectValue placeholder="Selecciona destino" />
                     </SelectTrigger>
                     <SelectContent>
-                      {selectedProductStock?.warehouses
-                        .filter((w) => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) !== ptOrigin)
-                        .map((w) => {
-                          const whId = warehouseOptions.find(o => o.name === w.warehouse_name)?.id
-                          return (
-                            <SelectItem key={`pt-to-${whId}`} value={String(whId)}>
-                              {w.warehouse_name} {w.city ? `(${w.city})` : ''}
-                            </SelectItem>
-                          )
-                        })}
+                      {warehouseOptions
+                        .filter((w) => String(w.id) !== ptOrigin)
+                        .map((w) => (
+                          <SelectItem key={`pt-to-${w.id}`} value={String(w.id)}>
+                            {w.name} {w.city ? `(${w.city})` : ''}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1660,7 +1702,7 @@ export const InventoryPage: React.FC = () => {
                     {ptOrigin && (
                       <span className="text-white/40 font-normal ml-2">
                         (max: {selectedProductStock?.warehouses.find(
-                          w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === ptOrigin
+                          w => String(w.warehouse_id) === ptOrigin
                         )?.stock_qty || 0} uds)
                       </span>
                     )}
@@ -1670,16 +1712,43 @@ export const InventoryPage: React.FC = () => {
                     value={ptQty}
                     onChange={(e) => {
                       const maxStock = selectedProductStock?.warehouses.find(
-                        w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === ptOrigin
+                        w => String(w.warehouse_id) === ptOrigin
                       )?.stock_qty || 0
                       const val = parseInt(e.target.value) || 1
                       setPtQty(Math.min(val, maxStock))
                     }}
                     min={1}
                     max={selectedProductStock?.warehouses.find(
-                      w => String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === ptOrigin
+                      w => String(w.warehouse_id) === ptOrigin
                     )?.stock_qty || 0}
                   />
+                </div>
+
+                {/* Tipo de vehiculo */}
+                <div className="flex flex-col gap-1.5">
+                  <Label>Transporte</Label>
+                  <Select value={ptVehicleType} onValueChange={setPtVehicleType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Tipo de vehiculo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="truck">
+                        <div className="flex items-center gap-2">
+                          🚚 Camion — S/ 2.50/km
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="van">
+                        <div className="flex items-center gap-2">
+                          🚐 Camioneta — S/ 1.80/km
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="bike">
+                        <div className="flex items-center gap-2">
+                          🏍️ Moto — S/ 0.50/km
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Flow indicator */}
@@ -1713,42 +1782,24 @@ export const InventoryPage: React.FC = () => {
                 <div className="flex gap-2 pt-2">
                   <button
                     type="button"
-                    onClick={() => setProductTransferOpen(false)}
+                    onClick={() => { resetPtForm(); setProductTransferOpen(false); }}
                     className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-sm font-semibold transition-all"
                   >
                     Cancelar
                   </button>
-                  <Button type="submit" className="flex-1 bg-nikeOrange hover:bg-nikeOrange/80 text-white">
-                    <ClipboardList className="w-4 h-4 mr-2" />
-                    Confirmar Traslado
+                  <Button type="submit" className="flex-1 bg-nikeOrange hover:bg-nikeOrange/80 text-white" disabled={ptTransferring}>
+                    {ptTransferring ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Procesando...</>
+                    ) : (
+                      <><ClipboardList className="w-4 h-4 mr-2" /> Confirmar Traslado</>
+                    )}
                   </Button>
                 </div>
               </div>
 
-              {/* Right column - tracking simulation */}
+              {/* Right column - tracking preview */}
               <div className="h-full min-h-[250px]">
                 {ptOrigin && ptDestination && ptOrigin !== ptDestination ? (() => {
-                  const now = new Date()
-                  const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
-                  const trackingId = `TRK-${dateStr}-${String(Math.floor(1000 + Math.random() * 9000))}`
-                  const fromCity = warehouseOptions.find(w => String(w.id) === ptOrigin)?.city || ''
-                  const toCity = warehouseOptions.find(w => String(w.id) === ptDestination)?.city || ''
-                  const hasDistance = fromCity && toCity
-                  let estimatedDays = 3
-                  if (hasDistance) {
-                    const routes: Record<string, Record<string, number>> = {
-                      'Lima': { 'Arequipa': 5, 'Trujillo': 3, 'Cusco': 6, 'Piura': 4, 'Lima': 1 },
-                      'Arequipa': { 'Lima': 5, 'Trujillo': 6, 'Cusco': 3, 'Piura': 7 },
-                      'Trujillo': { 'Lima': 3, 'Arequipa': 6, 'Cusco': 5, 'Piura': 2 },
-                      'Cusco': { 'Lima': 6, 'Arequipa': 3, 'Trujillo': 5, 'Piura': 7 },
-                      'Piura': { 'Lima': 4, 'Arequipa': 7, 'Trujillo': 2, 'Cusco': 7 },
-                    }
-                    estimatedDays = routes[fromCity]?.[toCity] || 4
-                  }
-                  const eta = new Date(now.getTime() + estimatedDays * 24 * 60 * 60 * 1000)
-                  const etaStr = eta.toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })
-                  const progressPercent = 15 + Math.floor(Math.random() * 20)
-
                   return (
                     <TrackingMap
                       fromId={ptOrigin}
@@ -1756,18 +1807,18 @@ export const InventoryPage: React.FC = () => {
                       warehouses={selectedProductStock?.warehouses || []}
                       warehouseOptions={warehouseOptions}
                       transferQty={ptQty}
-                      trackingId={trackingId}
-                      estimatedDays={estimatedDays}
-                      etaStr={etaStr}
-                      progressPercent={progressPercent}
+                      trackingId={'Vista previa'}
+                      estimatedDays={0}
+                      etaStr={''}
+                      progressPercent={0}
                     />
                   )
                 })() : (
                   <div className="h-full rounded-xl bg-white/[0.02] border border-dashed border-white/10 flex flex-col items-center justify-center text-center p-6">
                     <ArrowLeftRight className="w-8 h-8 text-white/20 mb-3" />
-                    <p className="text-xs text-white/30 font-medium">Simulacion de Traslado</p>
+                    <p className="text-xs text-white/30 font-medium">Vista previa del traslado</p>
                     <p className="text-[10px] text-white/20 mt-1 max-w-[180px]">
-                      Selecciona origen y destino en el formulario para ver la simulacion del traslado
+                      Selecciona origen y destino para ver la ruta en el mapa
                     </p>
                   </div>
                 )}

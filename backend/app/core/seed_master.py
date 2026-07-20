@@ -55,7 +55,7 @@ DEMO_USERS = [
 
 
 async def seed_permissions(session: AsyncSession) -> list[Permission]:
-    print("\n  [1/3] Sembrando permisos...")
+    print("\n  [2/4] Sembrando permisos...")
     created: list[Permission] = []
 
     for perm_data in DEFAULT_PERMISSIONS:
@@ -77,7 +77,7 @@ async def seed_permissions(session: AsyncSession) -> list[Permission]:
     await session.flush()
     print(f"    {len(created)} permisos asegurados")
 
-    print("\n  [2/3] Asignando permisos por rol...")
+    print("\n  [3/4] Asignando permisos por rol...")
     rp_count = 0
     for role, perm_keys in ROLE_PERMISSION_MAP.items():
         for key in perm_keys:
@@ -101,7 +101,7 @@ async def seed_permissions(session: AsyncSession) -> list[Permission]:
 
 
 async def seed_users(session: AsyncSession) -> list[User]:
-    print("\n  [3/3] Sembrando usuarios demo...")
+    print("\n  [4/4] Sembrando usuarios demo...")
     created_users: list[User] = []
 
     for user_data in DEMO_USERS:
@@ -141,8 +141,88 @@ async def log_audit(session: AsyncSession, user_id: int | None, action: str, ent
     session.add(log)
 
 
+async def run_migrations():
+    print("\n  [0/4] Ejecutando migraciones de esquema...")
+    from sqlalchemy import text
+
+    MIGRATIONS = [
+        # Route: waypoints
+        "ALTER TABLE nike_logistica.routes ADD COLUMN IF NOT EXISTS waypoints JSONB",
+
+        # Shipment: columnas de tracking
+        "ALTER TABLE nike_logistica.shipments "
+        "ADD COLUMN IF NOT EXISTS destination_warehouse_id INT, "
+        "ADD COLUMN IF NOT EXISTS vehicle_type VARCHAR(30) DEFAULT 'truck', "
+        "ADD COLUMN IF NOT EXISTS estimated_cost NUMERIC(10, 2), "
+        "ADD COLUMN IF NOT EXISTS product_name VARCHAR(150), "
+        "ADD COLUMN IF NOT EXISTS quantity INT",
+
+        # FK para destination_warehouse_id (condicional)
+        "DO $$ BEGIN "
+        "IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_shipment_dest_wh') THEN "
+        "ALTER TABLE nike_logistica.shipments "
+        "ADD CONSTRAINT fk_shipment_dest_wh "
+        "FOREIGN KEY (destination_warehouse_id) "
+        "REFERENCES nike_logistica.warehouses(warehouse_id); "
+        "END IF; "
+        "END $$",
+
+        # Waypoints ruta 1: Lima → Arequipa
+        "UPDATE nike_logistica.routes SET waypoints = '"
+        "[[-12.046373,-77.042754],[-12.5,-77.2],[-13.0,-77.0],[-13.5,-76.5],"
+        "[-14.0,-76.0],[-14.5,-75.5],[-15.0,-75.0],[-15.5,-74.5],"
+        "[-16.0,-73.5],[-16.2,-72.5],[-16.409047,-71.537451]]"
+        "'::jsonb WHERE route_id = 1 AND waypoints IS NULL",
+
+        # Waypoints ruta 2: Lima → Trujillo
+        "UPDATE nike_logistica.routes SET waypoints = '"
+        "[[-12.046373,-77.042754],[-11.8,-77.15],[-11.5,-77.3],[-11.2,-77.5],"
+        "[-10.8,-78.0],[-10.5,-78.3],[-10.0,-78.6],[-9.5,-78.8],"
+        "[-9.0,-79.0],[-8.5,-79.0],[-8.112782,-79.02837]]"
+        "'::jsonb WHERE route_id = 2 AND waypoints IS NULL",
+
+        # Waypoints ruta 3: Lima → Cusco
+        "UPDATE nike_logistica.routes SET waypoints = '"
+        "[[-12.046373,-77.042754],[-12.3,-76.8],[-12.6,-76.2],[-12.8,-75.8],"
+        "[-13.0,-75.5],[-13.2,-75.0],[-13.3,-74.5],[-13.4,-73.5],"
+        "[-13.5,-72.5],[-13.53195,-71.967463]]"
+        "'::jsonb WHERE route_id = 3 AND waypoints IS NULL",
+
+        # Waypoints ruta 4: Arequipa → Moquegua
+        "UPDATE nike_logistica.routes SET waypoints = '"
+        "[[-16.409047,-71.537451],[-16.6,-71.2],[-16.8,-71.0],"
+        "[-17.0,-70.98],[-17.193037,-70.935163]]"
+        "'::jsonb WHERE route_id = 4 AND waypoints IS NULL",
+
+        # Waypoints ruta 5: Lima Interna
+        "UPDATE nike_logistica.routes SET waypoints = '"
+        "[[-12.046373,-77.042754],[-12.02,-77.05],[-12.0,-77.06],[-11.997399,-77.070756]]"
+        "'::jsonb WHERE route_id = 5 AND waypoints IS NULL",
+
+        # Ruta adicional: Arequipa → Lima (si no existe)
+        "INSERT INTO nike_logistica.routes "
+        "(organization_id, route_name, origin_city, destination_city, estimated_hours, distance_km, carrier, waypoints) "
+        "SELECT 1, 'Arequipa → Lima', 'Arequipa', 'Lima', 16.0, 1010.0, 'Shalom', "
+        "'[[-16.409047,-71.537451],[-16.2,-72.5],[-16.0,-73.5],[-15.5,-74.5],"
+        "[-15.0,-75.0],[-14.5,-75.5],[-14.0,-76.0],[-13.5,-76.5],"
+        "[-13.0,-77.0],[-12.5,-77.2],[-12.046373,-77.042754]]'::jsonb "
+        "WHERE NOT EXISTS (SELECT 1 FROM nike_logistica.routes "
+        "WHERE origin_city = 'Arequipa' AND destination_city = 'Lima')",
+    ]
+
+    async with central_engine.connect() as conn:
+        for i, sql in enumerate(MIGRATIONS, 1):
+            try:
+                async with conn.begin():
+                    await conn.execute(text(sql))
+                print(f"    {i}/{len(MIGRATIONS)} OK")
+            except Exception as e:
+                print(f"    {i}/{len(MIGRATIONS)} ERROR: {e}")
+    print("    Migraciones aplicadas correctamente")
+
+
 async def ensure_tables():
-    print("\n  [0/3] Asegurando tablas en base de datos...")
+    print("\n  [1/4] Asegurando tablas en base de datos...")
     async with central_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     print("    Tablas verificadas/creadas correctamente")
@@ -154,6 +234,7 @@ async def seed_master():
     print("  Setup inicial del sistema")
     print("=" * 55)
 
+    await run_migrations()
     await ensure_tables()
 
     async with CentralSessionLocal() as session:

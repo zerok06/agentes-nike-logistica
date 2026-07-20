@@ -7,8 +7,8 @@ export const inventoryService = {
     return res.data
   },
 
-  async transferStock(data: any): Promise<{ message: string }> {
-    const res = await api.post<{ message: string }>('/stock/transfer', data)
+  async transferStock(data: any): Promise<{ message: string; tracking_code?: string }> {
+    const res = await api.post<{ message: string; tracking_code?: string }>('/stock/transfer', data)
     return res.data
   },
 

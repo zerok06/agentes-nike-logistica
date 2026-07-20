@@ -12,6 +12,7 @@ const CITY_COORDS: Record<string, [number, number]> = {
 }
 
 interface WarehouseData {
+  warehouse_id?: number
   warehouse_name: string
   city: string | null
   stock_qty: number
@@ -24,7 +25,7 @@ interface TrackingMapProps {
   fromId: string
   toId: string
   warehouses: WarehouseData[]
-  warehouseOptions: { id: number; name: string; city: string | null }[]
+  warehouseOptions: { id: number; name: string; city: string | null; lat?: number | null; lng?: number | null }[]
   transferQty: number
   trackingId: string
   estimatedDays: number
@@ -121,7 +122,7 @@ export default function TrackingMap({
       {/* Header */}
       <div className="px-4 py-2 border-b border-white/10 bg-white/[0.02]">
         <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">
-          Simulacion de Traslado
+          {trackingId === 'Vista previa' ? 'Vista previa de Ruta' : trackingId}
         </p>
       </div>
 
@@ -155,8 +156,9 @@ export default function TrackingMap({
                 <div className="text-xs space-y-0.5">
                   <p className="font-bold text-nikeOrange">{fromCity}</p>
                   {(() => {
+                    const whIdNum = parseInt(fromId)
                     const stock = warehouses.find(w =>
-                      String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === fromId
+                      w.warehouse_id === whIdNum
                     )
                     if (!stock) return null
                     return (
@@ -184,8 +186,9 @@ export default function TrackingMap({
                 <div className="text-xs space-y-0.5">
                   <p className="font-bold text-green-400">{toCity}</p>
                   {(() => {
+                    const whIdNum = parseInt(toId)
                     const stock = warehouses.find(w =>
-                      String(warehouseOptions.find(o => o.name === w.warehouse_name)?.id) === toId
+                      w.warehouse_id === whIdNum
                     )
                     if (!stock) return null
                     return (

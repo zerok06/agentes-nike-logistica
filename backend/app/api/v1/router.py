@@ -7,6 +7,7 @@ from app.api.v1.routes.stock import router as stock_router
 from app.api.v1.routes.metrics import router as metrics_router
 from app.api.v1.routes.products import router as products_router
 from app.api.v1.routes.permissions import router as permissions_router
+from app.api.v1.routes.tracking import router as tracking_router
 
 api_router = APIRouter()
 
@@ -18,3 +19,4 @@ api_router.include_router(stock_router)
 api_router.include_router(metrics_router)
 api_router.include_router(products_router)
 api_router.include_router(permissions_router)
+api_router.include_router(tracking_router)

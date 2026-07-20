@@ -1,5 +1,8 @@
+import random
+from datetime import datetime, timedelta
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 
@@ -8,6 +11,7 @@ from app.api.deps.auth import require_roles, get_current_user
 from app.schemas.auth import AuthenticatedUser, UserRole
 from app.repositories.inventory_repository import InventoryRepository
 from app.repositories.audit_repository import AuditRepository
+from app.models.inventory import Shipment, Route, Warehouse
 
 router = APIRouter(
     prefix="/stock",
@@ -17,6 +21,8 @@ router = APIRouter(
 # Pydantic Schemas
 class InventoryItemResponse(BaseModel):
     inventory_id: int
+    product_id: int
+    warehouse_id: int
     sku: str
     product_name: str
     warehouse_name: str
@@ -28,11 +34,18 @@ class InventoryItemResponse(BaseModel):
     class Config:
         from_attributes = True
 
+VEHICLE_COST_PER_KM = {
+    "truck": 2.5,
+    "van": 1.8,
+    "bike": 0.5,
+}
+
 class TransferRequest(BaseModel):
     product_id: int
     from_warehouse_id: int
     to_warehouse_id: int
     quantity: int = Field(..., gt=0, description="Cantidad a transferir (debe ser mayor a 0)")
+    vehicle_type: str = Field(default="truck", description="truck | van | bike")
 
 class AuditLogResponse(BaseModel):
     audit_id: int
@@ -72,6 +85,8 @@ async def list_stock(
         response.append(
             InventoryItemResponse(
                 inventory_id=item.inventory_id,
+                product_id=item.product_id,
+                warehouse_id=item.warehouse_id,
                 sku=item.product.sku,
                 product_name=item.product.product_name,
                 warehouse_name=item.warehouse.warehouse_name,
@@ -94,13 +109,39 @@ async def transfer_stock(
     """Realiza la transferencia de stock entre almacenes y registra la auditoría (requiere Admin o Supervisor)."""
     inv_repo = InventoryRepository(db)
     audit_repo = AuditRepository(db)
-    
-    # 1. Verificar stock en origen
-    origin_stock = await inv_repo.get_stock(payload.product_id, payload.from_warehouse_id)
-    if not origin_stock or origin_stock.stock_qty < payload.quantity:
+
+    # 0. Validar que ambos almacenes existen
+    origin_wh = await db.execute(
+        select(Warehouse).where(Warehouse.warehouse_id == payload.from_warehouse_id)
+    )
+    origin_wh = origin_wh.scalar_one_or_none()
+    if not origin_wh:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Stock insuficiente en el almacén de origen. Disponible: {origin_stock.stock_qty if origin_stock else 0}"
+            detail=f"Almacén de origen (ID {payload.from_warehouse_id}) no encontrado."
+        )
+
+    dest_wh = await db.execute(
+        select(Warehouse).where(Warehouse.warehouse_id == payload.to_warehouse_id)
+    )
+    dest_wh = dest_wh.scalar_one_or_none()
+    if not dest_wh:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Almacén de destino (ID {payload.to_warehouse_id}) no encontrado."
+        )
+
+    # 1. Verificar stock en origen
+    origin_stock = await inv_repo.get_stock(payload.product_id, payload.from_warehouse_id)
+    if not origin_stock:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No hay registro de stock para el producto (ID {payload.product_id}) en el almacén de origen ({origin_wh.warehouse_name})."
+        )
+    if origin_stock.stock_qty < payload.quantity:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Stock insuficiente en {origin_wh.warehouse_name}. Disponible: {origin_stock.stock_qty}, solicitado: {payload.quantity}."
         )
         
     # 2. Descontar en origen
@@ -125,6 +166,7 @@ async def transfer_stock(
         "from_warehouse_id": payload.from_warehouse_id,
         "to_warehouse_id": payload.to_warehouse_id,
         "quantity": payload.quantity,
+        "vehicle_type": payload.vehicle_type,
         "user_email": current_user.email
     }
     
@@ -141,8 +183,62 @@ async def transfer_stock(
         details=audit_details
     )
     
+    # 5. Crear Shipment para tracking
+    tracking_code = f"TRK-{datetime.utcnow().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
+    
+    org_id = origin_stock.organization_id
+    product_name = origin_stock.product.product_name if origin_stock.product else "Producto"
+    
+    # Buscar ruta entre almacenes
+    route = None
+    estimated_delivery = datetime.utcnow() + timedelta(days=3)
+    carrier = "Transporte Propio"
+    distance_km = None
+    estimated_hours = None
+    
+    if origin_wh and dest_wh and origin_wh.city and dest_wh.city:
+        route_result = await db.execute(
+            select(Route).where(
+                Route.origin_city == origin_wh.city,
+                Route.destination_city == dest_wh.city,
+                Route.is_active == True
+            ).limit(1)
+        )
+        route = route_result.scalar_one_or_none()
+        
+        if route and route.estimated_hours:
+            estimated_hours = float(route.estimated_hours)
+            estimated_delivery = datetime.utcnow() + timedelta(hours=estimated_hours)
+            carrier = route.carrier or "Transporte Propio"
+            distance_km = float(route.distance_km) if route.distance_km else None
+    
+    # Calcular costo estimado
+    cost_per_km = VEHICLE_COST_PER_KM.get(payload.vehicle_type, 2.5)
+    estimated_cost = (distance_km * cost_per_km) if distance_km else None
+    
+    shipment = Shipment(
+        organization_id=org_id,
+        warehouse_id=payload.from_warehouse_id,
+        destination_warehouse_id=payload.to_warehouse_id,
+        route_id=route.route_id if route else None,
+        shipment_date=datetime.utcnow(),
+        estimated_delivery=estimated_delivery,
+        status="en_transito",
+        carrier=carrier,
+        tracking_code=tracking_code,
+        vehicle_type=payload.vehicle_type,
+        estimated_cost=estimated_cost,
+        product_name=product_name,
+        quantity=payload.quantity,
+        notes=f"Transferencia de {payload.quantity} unidades de {product_name} desde {origin_wh.warehouse_name if origin_wh else '?'} hasta {dest_wh.warehouse_name if dest_wh else '?'}"
+    )
+    db.add(shipment)
+    
     await db.commit()
-    return {"message": "Transferencia realizada con éxito y registrada en auditoría."}
+    return {
+        "message": "Transferencia realizada con éxito y registrada en auditoría.",
+        "tracking_code": tracking_code
+    }
 
 
 @router.get("/audit-logs", response_model=PaginatedAuditResponse)

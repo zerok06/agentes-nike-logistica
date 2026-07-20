@@ -242,6 +242,7 @@ class Route(Base):
     estimated_hours: Mapped[float | None] = mapped_column(Numeric(6, 2))
     distance_km: Mapped[float | None] = mapped_column(Numeric(8, 2))
     carrier: Mapped[str | None] = mapped_column(String(100))
+    waypoints: Mapped[dict | None] = mapped_column(JSONB)
     is_active: Mapped[bool | None] = mapped_column(default=True)
 
 
@@ -253,6 +254,7 @@ class Shipment(Base):
     organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("nike_logistica.organizations.organization_id", ondelete="CASCADE"), nullable=False)
     sales_order_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("nike_logistica.sales_orders.sales_order_id"))
     warehouse_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("nike_logistica.warehouses.warehouse_id"))
+    destination_warehouse_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("nike_logistica.warehouses.warehouse_id"))
     route_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("nike_logistica.routes.route_id"))
     shipment_date: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.utcnow)
     estimated_delivery: Mapped[datetime | None] = mapped_column(DateTime)
@@ -260,4 +262,8 @@ class Shipment(Base):
     status: Mapped[str | None] = mapped_column(String(30), default="preparacion")
     carrier: Mapped[str | None] = mapped_column(String(100))
     tracking_code: Mapped[str | None] = mapped_column(String(100), unique=True)
+    vehicle_type: Mapped[str | None] = mapped_column(String(30), default="truck")
+    estimated_cost: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    product_name: Mapped[str | None] = mapped_column(String(150))
+    quantity: Mapped[int | None] = mapped_column(Integer)
     notes: Mapped[str | None] = mapped_column(Text)

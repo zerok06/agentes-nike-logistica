@@ -122,10 +122,19 @@ async def list_warehouses(
     ),
 ) -> list[dict]:
     result = await db.execute(
-        select(Warehouse.warehouse_id, Warehouse.warehouse_name, Warehouse.city)
+        select(Warehouse.warehouse_id, Warehouse.warehouse_name, Warehouse.city, Warehouse.latitude, Warehouse.longitude)
         .order_by(Warehouse.warehouse_name)
     )
-    return [{"id": r.warehouse_id, "name": r.warehouse_name, "city": r.city} for r in result.all()]
+    return [
+        {
+            "id": r.warehouse_id,
+            "name": r.warehouse_name,
+            "city": r.city,
+            "lat": float(r.latitude) if r.latitude else None,
+            "lng": float(r.longitude) if r.longitude else None,
+        }
+        for r in result.all()
+    ]
 
 
 @router.get("/categories")

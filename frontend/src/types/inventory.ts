@@ -1,5 +1,7 @@
 export interface StockItem {
   inventory_id: number
+  product_id: number
+  warehouse_id: number
   sku: string
   product_name: string
   warehouse_name: string
@@ -14,6 +16,7 @@ export interface TransferRequest {
   from_warehouse_id: number
   to_warehouse_id: number
   quantity: number
+  vehicle_type?: string
 }
 
 export interface AuditLog {

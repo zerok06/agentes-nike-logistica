@@ -41,6 +41,10 @@ class InventoryRepository:
                 Inventory.product_id == product_id,
                 Inventory.warehouse_id == warehouse_id
             )
+            .options(
+                selectinload(Inventory.product),
+                selectinload(Inventory.warehouse)
+            )
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
