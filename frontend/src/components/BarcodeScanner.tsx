@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode'
 import { X, ScanLine, AlertCircle, CheckCircle2, Camera, Zap } from 'lucide-react'
 import { Button } from './ui/button'
@@ -116,8 +117,19 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
     onClose()
   }
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        handleClose()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown, true)
+    return () => document.removeEventListener('keydown', onKeyDown, true)
+  }, [])
+
+  return createPortal(
+    <div className="fixed inset-0 z-[60] bg-black flex flex-col">
       {/* Top bar */}
       <div className="flex items-center justify-between p-4 pt-6 shrink-0 z-10">
         <div className="flex items-center gap-2">
@@ -193,6 +205,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
           </p>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

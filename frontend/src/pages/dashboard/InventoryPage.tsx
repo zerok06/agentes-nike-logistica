@@ -716,132 +716,136 @@ export const InventoryPage: React.FC = () => {
             </div>
           )}
 
-          <form onSubmit={handleAddProduct} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <Label>Nombre del Producto *</Label>
-                <input
-                  value={productForm.product_name}
-                  onChange={e => updateProductForm('product_name', e.target.value)}
-                  placeholder="Ej: Nike Air Max 90"
-                  required
-                  className="w-full mt-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-nikeOrange/50"
-                />
-              </div>
-              <div>
-                <Label>Modelo</Label>
-                <input
-                  value={productForm.model}
-                  onChange={e => updateProductForm('model', e.target.value)}
-                  placeholder="Ej: DM0011-100"
-                  className="w-full mt-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-nikeOrange/50"
-                />
-              </div>
-              <div>
-                <Label>Género</Label>
-                <select
-                  value={productForm.gender}
-                  onChange={e => updateProductForm('gender', e.target.value)}
-                  className="w-full mt-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-nikeOrange/50"
-                >
-                  <option value="Unisex">Unisex</option>
-                  <option value="Hombre">Hombre</option>
-                  <option value="Mujer">Mujer</option>
-                  <option value="Niño">Niño</option>
-                  <option value="Niña">Niña</option>
-                </select>
-              </div>
-              <div>
-                <Label>Talla</Label>
-                <input
-                  value={productForm.size}
-                  onChange={e => updateProductForm('size', e.target.value)}
-                  placeholder="Ej: 42, M, L"
-                  className="w-full mt-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-nikeOrange/50"
-                />
-              </div>
-              <div>
-                <Label>Color</Label>
-                <input
-                  value={productForm.color}
-                  onChange={e => updateProductForm('color', e.target.value)}
-                  placeholder="Ej: Blanco/Negro"
-                  className="w-full mt-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-nikeOrange/50"
-                />
-              </div>
-              <div>
-                <Label>Precio Unitario *</Label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={productForm.unit_price}
-                  onChange={e => updateProductForm('unit_price', e.target.value)}
-                  placeholder="Ej: 299.99"
-                  required
-                  className="w-full mt-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-nikeOrange/50"
-                />
-              </div>
-              <div className="col-span-2">
-                <Label>Descripción</Label>
-                <textarea
-                  value={productForm.description}
-                  onChange={e => updateProductForm('description', e.target.value)}
-                  placeholder="Descripción del producto..."
-                  rows={2}
-                  className="w-full mt-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-nikeOrange/50 resize-none"
-                />
-              </div>
-            </div>
-
-            <div className="border-t border-white/5 pt-3">
-              <Label className="mb-2 block">Código de Barras</Label>
-              <div className="flex gap-2">
-                <input
-                  value={productForm.barcode}
-                  onChange={e => updateProductForm('barcode', e.target.value)}
-                  placeholder="Escanear o ingresar código EAN-13"
-                  className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-nikeOrange/50"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowScanner(true)}
-                  className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-xs transition-colors"
-                  title="Escanear código"
-                >
-                  <Camera className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={generateInternalBarcode}
-                  className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-xs transition-colors"
-                  title="Generar código interno"
-                >
-                  <QrCode className="w-4 h-4" />
-                </button>
-              </div>
-              {productForm.barcode && (
-                <div className="mt-2 p-2 bg-white rounded-lg inline-block">
-                  <BarcodeLabel value={productForm.barcode} height={30} width={1.2} fontSize={8} />
+          <form onSubmit={handleAddProduct} className="flex flex-col max-h-[75vh]">
+            <div className="overflow-y-auto flex-1 space-y-3 pr-1">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Nombre del Producto *</Label>
+                  <input
+                    value={productForm.product_name}
+                    onChange={e => updateProductForm('product_name', e.target.value)}
+                    placeholder="Ej: Nike Air Max 90"
+                    required
+                    className="w-full mt-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-nikeOrange/50"
+                  />
                 </div>
-              )}
+                <div>
+                  <Label>Modelo</Label>
+                  <input
+                    value={productForm.model}
+                    onChange={e => updateProductForm('model', e.target.value)}
+                    placeholder="Ej: DM0011-100"
+                    className="w-full mt-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-nikeOrange/50"
+                  />
+                </div>
+                <div>
+                  <Label>Género</Label>
+                  <select
+                    value={productForm.gender}
+                    onChange={e => updateProductForm('gender', e.target.value)}
+                    className="w-full mt-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-nikeOrange/50"
+                  >
+                    <option value="Unisex">Unisex</option>
+                    <option value="Hombre">Hombre</option>
+                    <option value="Mujer">Mujer</option>
+                    <option value="Niño">Niño</option>
+                    <option value="Niña">Niña</option>
+                  </select>
+                </div>
+                <div>
+                  <Label>Talla</Label>
+                  <input
+                    value={productForm.size}
+                    onChange={e => updateProductForm('size', e.target.value)}
+                    placeholder="Ej: 42, M, L"
+                    className="w-full mt-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-nikeOrange/50"
+                  />
+                </div>
+                <div>
+                  <Label>Color</Label>
+                  <input
+                    value={productForm.color}
+                    onChange={e => updateProductForm('color', e.target.value)}
+                    placeholder="Ej: Blanco/Negro"
+                    className="w-full mt-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-nikeOrange/50"
+                  />
+                </div>
+                <div>
+                  <Label>Precio Unitario *</Label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={productForm.unit_price}
+                    onChange={e => updateProductForm('unit_price', e.target.value)}
+                    placeholder="Ej: 299.99"
+                    required
+                    className="w-full mt-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-nikeOrange/50"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label>Descripción</Label>
+                  <textarea
+                    value={productForm.description}
+                    onChange={e => updateProductForm('description', e.target.value)}
+                    placeholder="Descripción del producto..."
+                    rows={1}
+                    className="w-full mt-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-nikeOrange/50 resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-white/5 pt-3">
+                <Label className="block text-xs mb-1">Código de Barras</Label>
+                <div className="flex gap-1.5">
+                  <input
+                    value={productForm.barcode}
+                    onChange={e => updateProductForm('barcode', e.target.value)}
+                    placeholder="Escanear o ingresar código EAN-13"
+                    className="flex-1 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-nikeOrange/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowScanner(true)}
+                    className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-xs transition-colors"
+                    title="Escanear código"
+                  >
+                    <Camera className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={generateInternalBarcode}
+                    className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-xs transition-colors"
+                    title="Generar código interno"
+                  >
+                    <QrCode className="w-4 h-4" />
+                  </button>
+                </div>
+                {productForm.barcode && (
+                  <div className="mt-1.5 p-1.5 bg-white rounded-lg inline-block">
+                    <BarcodeLabel value={productForm.barcode} height={24} width={1} fontSize={7} />
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2">
+                <WarehouseDistributionForm value={distributions} onChange={setDistributions} />
+              </div>
             </div>
 
-            <div className="border-t border-white/5 pt-3">
-              <WarehouseDistributionForm value={distributions} onChange={setDistributions} />
+            <div className="sticky bottom-0 pt-3 mt-auto">
+              <Button
+                type="submit"
+                disabled={addingProduct || !hasAddData}
+                className="w-full bg-nikeOrange hover:bg-nikeOrange/80 text-white"
+              >
+                {addingProduct ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Registrando...</>
+                ) : (
+                  'Registrar Producto'
+                )}
+              </Button>
             </div>
-
-            <Button
-              type="submit"
-              disabled={addingProduct || !hasAddData}
-              className="w-full bg-nikeOrange hover:bg-nikeOrange/80 text-white"
-            >
-              {addingProduct ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Registrando...</>
-              ) : (
-                'Registrar Producto'
-              )}
-            </Button>
           </form>
         </DialogContent>
       </Dialog>
